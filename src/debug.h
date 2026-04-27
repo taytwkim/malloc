@@ -1,5 +1,5 @@
-#ifndef TKMALLOC_DEBUG_H
-#define TKMALLOC_DEBUG_H
+#ifndef TAYMALLOC_DEBUG_H
+#define TAYMALLOC_DEBUG_H
 
 #include <unistd.h>
 #include "config.h"

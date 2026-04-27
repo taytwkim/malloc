@@ -63,7 +63,7 @@ void *malloc(size_t size) {
     if (!hdr) {
         safe_log_msg("[malloc]: searching freelist\n");
 
-        pthread_mutex_lock(&a->lock);
+        platform_mutex_lock(&a->lock);
 
         hdr = free_list_try(a, need_total);
 
@@ -73,11 +73,11 @@ void *malloc(size_t size) {
 
             if (!hdr) {
                 safe_log_msg("[malloc]: malloc failed, return NULL\n");
-                pthread_mutex_unlock(&a->lock);
+                platform_mutex_unlock(&a->lock);
                 return NULL;
             }
         }
-        pthread_mutex_unlock(&a->lock);
+        platform_mutex_unlock(&a->lock);
     }
 
     void *ret = chunk_hdr_to_payload(hdr);
@@ -142,7 +142,7 @@ void free(void *ptr) {
 
     // 2) Fall back to global free path: mark free, coalesce in the owning heap, push to arena freelist.
     safe_log_msg("[free]: free to freelist\n");
-    pthread_mutex_lock(&a->lock);
+    platform_mutex_lock(&a->lock);
 
     chunk_write_size_to_hdr(hdr, csz);
     chunk_write_ftr(hdr, csz);
@@ -167,7 +167,7 @@ void free(void *ptr) {
             arena_unmap_heap(a, h);
         }
 
-        pthread_mutex_unlock(&a->lock);
+        platform_mutex_unlock(&a->lock);
         return;
     }
 
@@ -177,5 +177,5 @@ void free(void *ptr) {
     safe_log_msg("[free]: push free chunk to freelist\n");
     free_list_push_front(a, (free_chunk_t*)merged);
 
-    pthread_mutex_unlock(&a->lock);
+    platform_mutex_unlock(&a->lock);
 }

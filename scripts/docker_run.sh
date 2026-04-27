@@ -6,12 +6,12 @@
 # -o pipefail   in a pipeline, fail if any command fails, not just the last one.
 set -euo pipefail
 
-IMAGE_NAME="tkmalloc-linux-dev"
+IMAGE_NAME="taymalloc-linux-dev"
 CONTAINER_WORKDIR="/workspace"
 
 usage() {
     echo "Usage: $0 <test-source.c> [KEY=VALUE ...]"
-    echo "Example: $0 tests/hello.c TKMALLOC_DISABLE_TCACHE=1 TKMALLOC_VERBOSE=1"
+    echo "Example: $0 tests/hello.c TAYMALLOC_DISABLE_TCACHE=1 TAYMALLOC_VERBOSE=1"
 }
 
 if [[ $# -lt 1 ]]; then
@@ -47,7 +47,7 @@ docker run --rm \
     "$IMAGE_NAME" \
     bash -lc "
         set -euo pipefail
-        TMP_WORKDIR=/tmp/tkmalloc
+        TMP_WORKDIR=/tmp/taymalloc
         rm -rf \"\$TMP_WORKDIR\"
         mkdir -p \"\$TMP_WORKDIR\"
         cp -R . \"\$TMP_WORKDIR\"
@@ -57,6 +57,6 @@ docker run --rm \
         mkdir -p build
         gcc -std=c11 -Wall -Wextra -O2 -Isrc -D_GNU_SOURCE \"$TEST_SOURCE\" -o \"build/$TEST_NAME\" -lpthread -fopenmp
         echo
-        echo \"Running build/$TEST_NAME with LD_PRELOAD=./build/libtkmalloc.so\"
-        TKMALLOC_INJECTED=1 ${EXTRA_ENV_STRING} LD_PRELOAD=./build/libtkmalloc.so \"./build/$TEST_NAME\"
+        echo \"Running build/$TEST_NAME with LD_PRELOAD=./build/libtaymalloc.so\"
+        TAYMALLOC_INJECTED=1 ${EXTRA_ENV_STRING} LD_PRELOAD=./build/libtaymalloc.so \"./build/$TEST_NAME\"
     "

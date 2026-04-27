@@ -2,10 +2,17 @@ CC = gcc
 CFLAGS = -std=c11 -Wall -Wextra -O2 -fPIC -D_GNU_SOURCE
 LDLIBS = -lpthread
 
-SRCS = src/arena.c src/freelist.c src/heap.c src/malloc.c src/config.c
+UNAME_S := $(shell uname -s)
+
+SRCS = src/arena.c src/freelist.c src/heap.c src/malloc.c src/config.c src/platform.c
 OBJS = $(patsubst src/%.c,build/%.o,$(SRCS))
 
-LIB_NAME = libtkmalloc.so
+ifeq ($(UNAME_S),Darwin)
+LIB_NAME = libtaymalloc.dylib
+else
+LIB_NAME = libtaymalloc.so
+endif
+
 LIB_PATH = build/$(LIB_NAME)
 
 all: build $(LIB_PATH)

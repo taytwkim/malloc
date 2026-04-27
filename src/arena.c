@@ -1,15 +1,12 @@
-#include <stdlib.h>     // for getenv (used by config_init)
-#include <sys/mman.h>   // for mmap
-#include <unistd.h>     // for sysconf
 #include "arena.h"
 #include "util.h"
 #include "config.h"
 
-static pthread_once_t g_once = PTHREAD_ONCE_INIT;
+static platform_once_t g_once = PLATFORM_ONCE_INIT;
 static arena_t g_arenas[MAX_NUM_ARENAS];
 static int g_num_arenas = 0;
 static int g_next_arena = 0;
-static pthread_mutex_t g_arena_assign_lock = PTHREAD_MUTEX_INITIALIZER;
+static platform_mutex_t g_arena_assign_lock = PLATFORM_MUTEX_INITIALIZER;
 
 // If compiled with a specific C standard, the compiler defines __STDC_VERSION__
 #if __STDC_VERSION__ >= 201112L
@@ -21,9 +18,8 @@ static pthread_mutex_t g_arena_assign_lock = PTHREAD_MUTEX_INITIALIZER;
 int arena_map_new_heap(arena_t *a, size_t need_total) {
     size_t req = align_pagesize(need_total);
 
-    void *mem = mmap(NULL, req, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-    if (mem == MAP_FAILED) return -1;
+    void *mem = platform_map_memory(req);
+    if (!mem) return -1;
 
     heap_t *h = (heap_t *)mem;
     h->arena = a;
@@ -70,7 +66,7 @@ int arena_unmap_heap(arena_t *a, heap_t *h) {
             }
 
             size_t map_size = (size_t)((uint8_t *)h->end - (uint8_t *)h);
-            (void)munmap((void *)h, map_size);
+            (void)platform_unmap_memory((void *)h, map_size);
             return 0;
         }
         prev = curr;
@@ -85,7 +81,7 @@ static void arena_unmap_all_heaps(arena_t *a) {
     while (h) {
         heap_t *next = h->next;
         size_t map_size = (size_t)((uint8_t *)h->end - (uint8_t *)h);
-        (void)munmap((void *)h, map_size);
+        (void)platform_unmap_memory((void *)h, map_size);
         h = next;
     }
     
@@ -98,7 +94,7 @@ static int arena_init(arena_t *a, int id) {
     a->heaps = NULL;
     a->active_heap = NULL;
     a->free_list = NULL;
-    pthread_mutex_init(&a->lock, NULL);
+    platform_mutex_init(&a->lock);
 
     int add_heap_succeeded = arena_map_new_heap(a, ARENA_DEFAULT_HEAP_SIZE);
     if (add_heap_succeeded < 0) return -1;
@@ -115,14 +111,14 @@ arena_t *arena_from_thread(void) {
         return t_arena;
     }
 
-    pthread_mutex_lock(&g_arena_assign_lock);
+    platform_mutex_lock(&g_arena_assign_lock);
 
     int idx = g_next_arena % g_num_arenas;
     g_next_arena++;
 
     t_arena = &g_arenas[idx];
 
-    pthread_mutex_unlock(&g_arena_assign_lock);
+    platform_mutex_unlock(&g_arena_assign_lock);
 
     return t_arena;
 }
@@ -134,11 +130,7 @@ static void global_init(void) {
         g_num_arenas = 1;
     }
     else {
-        long cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
-
-        if (cpu_count < 1) cpu_count = 1;
-
-        g_num_arenas = (int)cpu_count;
+        g_num_arenas = platform_cpu_count();
     }
 
     if (g_num_arenas < 1) g_num_arenas = 1;
@@ -157,5 +149,5 @@ static void global_init(void) {
 }
 
 void ensure_global_init(void) {
-    pthread_once(&g_once, global_init);
+    platform_call_once(&g_once, global_init);
 }

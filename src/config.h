@@ -1,5 +1,5 @@
-#ifndef TKMALLOC_CONFIG_H
-#define TKMALLOC_CONFIG_H
+#ifndef TAYMALLOC_CONFIG_H
+#define TAYMALLOC_CONFIG_H
 
 #include <stddef.h>
 
@@ -8,9 +8,9 @@ typedef struct {
     int verbose;
     int disable_tcache;
     int disable_arenas;
-} tkmalloc_config_t;
+} taymalloc_config_t;
 
-extern tkmalloc_config_t g_cfg;
+extern taymalloc_config_t g_cfg;
 
 void config_init(void);
 

@@ -3,7 +3,7 @@
 
 #include <stddef.h>   // size_t
 #include <stdint.h>   // uintptr_t
-#include <unistd.h>   // getpagesize()
+#include "platform.h"
 
 /* requested size is rounded up to a multiple of 16 */
 static inline size_t align_16(size_t n) {
@@ -17,7 +17,7 @@ static inline int is_aligned_16(const void *p) {
 }
 
 static inline size_t align_pagesize(size_t n) {
-    size_t ps = (size_t)sysconf(_SC_PAGESIZE);
+    size_t ps = platform_page_size();
     size_t rem = n % ps;
     return rem ? (n + (ps - rem)) : n;
 }
