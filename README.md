@@ -2,17 +2,7 @@
 
 `taymalloc` is a memory allocator for Linux and macOS that can be built as a shared library and linked into existing codebases.
 
-While not heavily optimized for throughput or RSS, it provides safe concurrent memory allocation through lock protection. 
-Per-thread arenas and thread-local caches are used to reduce contention.
-
-## Platform Support
-
-- Linux: supported as a preloadable allocator via `LD_PRELOAD`
-- macOS: supported as a shared library allocator, with best-effort interposition for selected programs via `DYLD_INSERT_LIBRARIES`
-
-The allocator core is written against a small POSIX platform wrapper, so Linux and macOS share the same implementation. The preload and interposition workflow still differs by OS.
-
-## Getting Started
+## Usage
 
 ### Linux
 
