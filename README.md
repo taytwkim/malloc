@@ -1,6 +1,6 @@
 <h1 align="center">Design a Memory Allocator</h1>
 
-`taymalloc` is a memory allocator for Linux and macOS that can be built as a shared library and linked into existing codebases.
+`taymalloc` is a Linux and macOS memory allocator library that can be dynamically linked into existing codebases.
 
 ## Usage
 
@@ -30,13 +30,13 @@ LD_PRELOAD=./build/libtaymalloc.so ./build/hello
 make
 ```
 
-2. For selected binaries, try interposing with `DYLD_INSERT_LIBRARIES`.
+2. Interpose using `DYLD_INSERT_LIBRARIES`.
 
 ```shell
 DYLD_INSERT_LIBRARIES=./build/libtaymalloc.dylib ./build/hello
 ```
 
-macOS does not guarantee allocator interposition for every target process. The intended support level here is "works for selected programs and controlled tests," not "universal drop-in replacement for all binaries."
+**Note:** On macOS, allocator interposition is not guaranteed for all target processes. The macOS build is intended for selected programs and controlled test environments, rather than as a universal drop-in replacement that works in every case.
 
 ### CMake
 
@@ -47,4 +47,4 @@ cmake -S . -B build-cmake
 cmake --build build-cmake
 ```
 
-The optional `parallel` test depends on OpenMP. On macOS with the default Apple Clang toolchain, that target may be skipped unless OpenMP support is installed separately.
+The optional `parallel` test depends on OpenMP. On macOS with the default Apple Clang toolchain, the target may be skipped unless OpenMP is supported.
