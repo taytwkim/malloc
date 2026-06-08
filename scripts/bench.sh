@@ -37,7 +37,7 @@ run_case() {
 
     for ((run = 1; run <= NUM_RUNS; run++)); do
         echo "[run $run/$NUM_RUNS]"
-        /usr/bin/time -p env "$PRELOAD_VAR=$LIB_PATH" "$@" "$BENCH_BIN" "$NUM_THREADS" "$NUM_ITERS"
+        time -p env "$PRELOAD_VAR=$LIB_PATH" "$@" "$BENCH_BIN" "$NUM_THREADS" "$NUM_ITERS"
     done
 }
 
