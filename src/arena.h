@@ -18,10 +18,10 @@ typedef struct arena {
 
 int arena_map_new_heap(arena_t *a, size_t need_total);
 
-/* find heap and remove from the linked list*/
+// find heap and remove from the linked list
 int arena_unmap_heap(arena_t *a, heap_t *h);
 
-/* for malloc, we want to allocate from the thread-specific arena */
+// for malloc, we want to allocate from the thread-specific arena
 arena_t *arena_from_thread(void);
 
 void ensure_global_init(void);

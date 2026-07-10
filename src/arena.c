@@ -97,12 +97,13 @@ static int arena_init(arena_t *a, int id) {
     platform_mutex_init(&a->lock);
 
     int add_heap_succeeded = arena_map_new_heap(a, ARENA_DEFAULT_HEAP_SIZE);
+    
     if (add_heap_succeeded < 0) return -1;
 
     return 0;
 }
 
-/* for malloc, we want to allocate from the thread-specific arena */
+// for malloc, we want to allocate from the thread-specific arena
 arena_t *arena_from_thread(void) {
     if (t_arena) return t_arena;
 

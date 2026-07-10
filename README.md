@@ -1,10 +1,10 @@
-<h1 align="center">Memory Allocator</h1>
+# Memory Allocator
 
-`taymalloc` is a Linux and macOS memory allocator library that can be dynamically linked into existing codebases.
+`taymalloc` is a memory allocator library that can be dynamically linked into existing codebases.
 
 ## Usage
 
-### Linux
+Tested on Linux. Interposition support on macOS is still in progress.
 
 1. Build `libtaymalloc.so`.
 
@@ -12,39 +12,23 @@
 make
 ```
 
-2. Compile target code, then use `LD_PRELOAD` to replace system's default `malloc` with `taymalloc`.
+2. Compile the target code, then use `LD_PRELOAD` to replace the system's default `malloc` with `taymalloc`.
 
 ```shell
-# Compile target code
+# Compile the target code
 gcc tests/hello.c -o build/hello
 
 # Inject taymalloc
 LD_PRELOAD=./build/libtaymalloc.so ./build/hello
 ```
 
-### macOS
+## Testing
 
-1. Build `libtaymalloc.dylib`.
-
-```shell
-make
-```
-
-2. Interpose using `DYLD_INSERT_LIBRARIES`.
+For quick tests on non-Linux platforms, use `docker_run.sh` to spin up a Linux container and run the tests.
 
 ```shell
-DYLD_INSERT_LIBRARIES=./build/libtaymalloc.dylib ./build/hello
+./scripts/docker_run.sh tests/hello.c
+
+# Pass in environment variables
+./scripts/docker_run.sh tests/hello.c TAYMALLOC_VERBOSE=1
 ```
-
-**Note:** On macOS, allocator interposition is not guaranteed for all target processes. The macOS build is intended for select programs and controlled test environments, rather than as a universal drop-in replacement that works in every case.
-
-### CMake
-
-You can also build with CMake on both Linux and macOS.
-
-```shell
-cmake -S . -B build-cmake
-cmake --build build-cmake
-```
-
-The optional `parallel` test depends on OpenMP. On macOS with the default Apple Clang toolchain, the target may be skipped unless OpenMP is supported.
