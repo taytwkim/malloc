@@ -3,9 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <omp.h>
-#include "../src/malloc.h"
 
-/* Tests for multi-threaded mallocs and frees */
+// Tests for multi-threaded mallocs and frees
 
 static void print_usage(const char *prog) {
     fprintf(stderr, "Usage: %s [num_threads] [num_iters]\n", prog);

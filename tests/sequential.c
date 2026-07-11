@@ -3,9 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "../src/malloc.h"
-
-/* Tests for sequential malloc and frees */
+// Tests for sequential malloc and frees
 
 static int aligned16(void *p) {
     return ((uintptr_t)p & 15u) == 0; 

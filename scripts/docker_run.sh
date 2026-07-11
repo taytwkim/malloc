@@ -10,8 +10,8 @@ IMAGE_NAME="taymalloc-linux-dev"
 CONTAINER_WORKDIR="/workspace"
 
 usage() {
-    echo "Usage: $0 <test-source.c> [KEY=VALUE ...]"
-    echo "Example: $0 tests/hello.c TAYMALLOC_DISABLE_TCACHE=1 TAYMALLOC_VERBOSE=1"
+    echo "Usage: $0 <test-source.c>"
+    echo "Example: $0 tests/hello.c TAYMALLOC_VERBOSE=1 ..."
 }
 
 if [[ $# -lt 1 ]]; then

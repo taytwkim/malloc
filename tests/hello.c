@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "../src/malloc.h"
-
 int main(void) {
     void *p = malloc(16);
     
