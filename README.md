@@ -1,10 +1,8 @@
 # Memory Allocator
 
-`taymalloc` is a memory allocator library that can be dynamically linked into existing codebases.
+`taymalloc` is a memory allocator library that can be dynamically linked into existing Linux codebases.
 
 ## Usage
-
-Tested on Linux. Interposition support on macOS is still in progress.
 
 1. Build `libtaymalloc.so`.
 

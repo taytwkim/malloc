@@ -4,8 +4,6 @@
 #include <string.h>
 #include <omp.h>
 
-// Tests for multi-threaded mallocs and frees
-
 static void print_usage(const char *prog) {
     fprintf(stderr, "Usage: %s [num_threads] [num_iters]\n", prog);
     fprintf(stderr, "Defaults: num_threads=4, num_iters=10000\n");
@@ -23,6 +21,7 @@ int main(int argc, char **argv) {
 
     if (argc >= 2) {
         num_threads = atoi(argv[1]);
+
         if (num_threads <= 0) {
             fprintf(stderr, "Invalid num_threads: %s\n", argv[1]);
             print_usage(argv[0]);
@@ -32,6 +31,7 @@ int main(int argc, char **argv) {
 
     if (argc == 3) {
         num_iters = strtoull(argv[2], NULL, 10);
+        
         if (num_iters == 0) {
             fprintf(stderr, "Invalid num_iters: %s\n", argv[2]);
             print_usage(argv[0]);

@@ -5,17 +5,8 @@ set -euo pipefail
 NUM_THREADS="${1:-4}"
 NUM_ITERS="${2:-1000000}"
 NUM_RUNS="${3:-5}"
-
-UNAME_S="$(uname -s)"
-
-if [[ "$UNAME_S" = "Darwin" ]]; then
-    LIB_PATH="./build/libtaymalloc.dylib"
-    PRELOAD_VAR="DYLD_INSERT_LIBRARIES"
-else
-    LIB_PATH="./build/libtaymalloc.so"
-    PRELOAD_VAR="LD_PRELOAD"
-fi
-
+LIB_PATH="./build/libtaymalloc.so"
+PRELOAD_VAR="LD_PRELOAD"
 BENCH_BIN="./build/parallel"
 
 if [[ ! -x "$BENCH_BIN" ]]; then

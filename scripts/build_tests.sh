@@ -7,16 +7,8 @@ mkdir -p build
 CC=cc
 CFLAGS="-std=c11 -Wall -Wextra -O2 -pthread"
 OPENMP_FLAGS="-fopenmp"
-
-UNAME_S="$(uname -s)"
-
-if [ "$UNAME_S" = "Darwin" ]; then
-    LIB_NAME="libtaymalloc.dylib"
-    PRELOAD_VAR="DYLD_INSERT_LIBRARIES"
-else
-    LIB_NAME="libtaymalloc.so"
-    PRELOAD_VAR="LD_PRELOAD"
-fi
+LIB_NAME="libtaymalloc.so"
+PRELOAD_VAR="LD_PRELOAD"
 
 echo "Building test binaries..."
 
@@ -31,7 +23,7 @@ echo "  [Done] build/sequential"
 if $CC $CFLAGS tests/parallel.c -o build/parallel $OPENMP_FLAGS; then
     echo "  [Done] build/parallel (OpenMP enabled)"
 else
-    echo "  [Skipped] build/parallel (OpenMP unavailable with $CC on $UNAME_S)"
+    echo "  [Skipped] build/parallel (OpenMP unavailable with $CC)"
 fi
 
 echo ""
