@@ -7,6 +7,7 @@ taymalloc_config_t g_cfg = {0};  // zero-initializes env var
 
 static int env_is_enabled(const char* name) {
     const char* value = getenv(name);
+    
     // value is NULL if env var is not set
     return value && strcmp(value, "1") == 0;
 }

@@ -4,10 +4,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#ifndef MAP_ANONYMOUS
-#define MAP_ANONYMOUS MAP_ANON
-#endif
-
 int platform_mutex_init(platform_mutex_t *mutex) {
     return pthread_mutex_init(mutex, NULL);
 }
@@ -25,11 +21,7 @@ int platform_call_once(platform_once_t *once_control, void (*init_routine)(void)
 }
 
 size_t platform_page_size(void) {
-#ifdef _SC_PAGESIZE
     long page_size = sysconf(_SC_PAGESIZE);
-#else
-    long page_size = sysconf(_SC_PAGE_SIZE);
-#endif
 
     if (page_size < 1) {
         return (size_t)4096;
@@ -39,11 +31,7 @@ size_t platform_page_size(void) {
 }
 
 int platform_cpu_count(void) {
-#ifdef _SC_NPROCESSORS_ONLN
     long cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
-#else
-    long cpu_count = sysconf(_SC_NPROCESSORS_CONF);
-#endif
 
     if (cpu_count < 1) {
         return 1;
