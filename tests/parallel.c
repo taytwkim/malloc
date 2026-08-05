@@ -39,8 +39,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    printf("test2: multithreaded alloc/free test\n");
-    printf("  threads = %d, iters per thread = %zu\n", num_threads, num_iters);
+    printf("test2: multithreaded test\n");
+    printf("    # threads = %d, # iters per thread = %zu\n", num_threads, num_iters);
 
     int errors = 0;
 
@@ -53,16 +53,17 @@ int main(int argc, char **argv) {
             unsigned char *p = (unsigned char*)malloc(sz);
             
             if (!p) {
-                printf("Thread %d: my_malloc returned NULL at iter %zu\n", tid, i);
+                printf("Thread %d: malloc returned NULL at iter %zu\n", tid, i);
                 errors++;
                 break;
             }
 
-            // Fill with a thread-specific pattern
+            // Fill payload with thread-specific value
             unsigned char pattern = (unsigned char)(tid + 1);
             memset(p, pattern, sz);
 
-            // Verify the pattern (check corruption)
+            // Verify pattern (check corruption)
+            // Check whether another thread has overwritten the pattern
             for (size_t j = 0; j < sz; j++) {
                 if (p[j] != pattern) {
                     printf("Thread %d: data corrupted at iter %zu, offset %zu\n", tid, i, j);
@@ -70,6 +71,7 @@ int main(int argc, char **argv) {
                     break;
                 }
             }
+            
             free(p);
 
             // If this thread saw an error, stop
@@ -78,6 +80,7 @@ int main(int argc, char **argv) {
             }
         }
     }
+    
     if (errors > 0) {
         printf("test2: FAILED (errors = %d)\n", errors);
         return 1;

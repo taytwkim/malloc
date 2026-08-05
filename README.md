@@ -10,17 +10,15 @@
 make
 ```
 
-2. Compile the target code, then use `LD_PRELOAD` to replace the system's default `malloc` with `taymalloc`.
+2. Compile target code, then `LD_PRELOAD` to replace system's default `malloc` with `taymalloc`.
 
 ```shell
-# Compile the target code
+# Compile target code
 gcc tests/hello.c -o build/hello
 
 # Inject taymalloc
 LD_PRELOAD=./build/libtaymalloc.so ./build/hello
 ```
-
-## Testing
 
 For quick tests on non-Linux platforms, use `docker_run.sh` to spin up a Linux container and run the tests.
 

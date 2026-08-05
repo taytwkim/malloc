@@ -9,9 +9,9 @@ static int aligned16(void *p) {
 }
 
 static void test_alignment(void) {
-    void *a = malloc(1);
-    void *b = malloc(17);
-    void *c = malloc(4096);
+    void* a = malloc(1);
+    void* b = malloc(17);
+    void* c = malloc(4096);
 
     assert(a && b && c);
     assert(aligned16(a));
@@ -25,34 +25,36 @@ static void test_alignment(void) {
 
 static void test_null_and_zero(void) {
     free(NULL);            // free(NULL) should be a no-op
-    void *p = malloc(0);   // should be NULL
+    void* p = malloc(0);   // should be NULL
     assert(p == NULL);
 }
 
 static void test_big_chunk_alloc(void) {
-    void *p = malloc(16777217);
+    void* p = malloc(16777217);
     
     // If we don't touch p, compiler optimization might remove malloc!
     if (p) {
-        printf("        allocated 16777217 bytes at address: %p\n", p);
+        printf("    allocated 16777217 bytes at address: %p\n", p);
     } 
     else {
-        printf("        malloc failed\n");
+        printf("    malloc failed\n");
     }
 
     free(p);
 }
 
 static void test_unmap_heap(void){
-    void *p = malloc(16);       // map first heap
-    void *q = malloc(16777217); // map second heap by allocating big chunk
-    free(p);                    // should unmap the first heap
+    void* p = malloc(16);       // map first heap
+    void* q = malloc(16777217); // map second heap by allocating big chunk   
+    free(p);                    // unmap the first heap
     free(q);
 }
 
 static void test_churn(void) {
-    enum { N = 4 };
-    void *arr[N] = {0};
+    // Using enum here makes N a compile-time constant (immutable)
+    // instead of a regular variable in memory.
+    enum { N = 1000000 };
+    void* arr[N] = {0};
 
     // Allocate a mix of sizes
     for (int i = 0; i < N; ++i) {
@@ -97,7 +99,7 @@ int main(void){
     printf("[*] test_churn...\n");
     test_churn();
 
-    printf("OK: all tests passed ✅\n");
+    printf("[test1] PASSED ✅\n");
     
     return 0;
 }

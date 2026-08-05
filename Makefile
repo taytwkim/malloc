@@ -1,8 +1,8 @@
 CC = cc
 
-# We do not link against libraries when compiling individual source files, 
+# We don't link against libraries when compiling individual source files, 
 # but -pthread is still often added at compile time because it may enable 
-# thread-related compiler behavior, not just linker behavior.”
+# thread-related compiler behavior.
 
 CFLAGS = -std=c11 -Wall -Wextra -O2 -fPIC -pthread
 LDFLAGS = -shared -pthread
