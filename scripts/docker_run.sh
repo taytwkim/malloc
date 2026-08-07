@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # script fails fast instead of silently continuing
 # -e            exit immediately if a command fails.

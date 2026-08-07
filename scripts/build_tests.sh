@@ -5,7 +5,11 @@ set -e
 mkdir -p build
 
 CC=cc
-CFLAGS="-std=c11 -Wall -Wextra -O2 -pthread"
+
+# -fno-builtin-malloc and -fno-builtin-free disable compiler optimizations and
+# assumptions for malloc and free.
+CFLAGS="-std=c11 -Wall -Wextra -O2 -fno-builtin-malloc -fno-builtin-free -pthread"
+
 OPENMP_FLAGS="-fopenmp"
 LIB_NAME="libtaymalloc.so"
 PRELOAD_VAR="LD_PRELOAD"

@@ -31,15 +31,8 @@ static void test_null_and_zero(void) {
 
 static void test_big_chunk_alloc(void) {
     void* p = malloc(16777217);
-    
-    // If we don't touch p, compiler optimization might remove malloc!
-    if (p) {
-        printf("    allocated 16777217 bytes at address: %p\n", p);
-    } 
-    else {
-        printf("    malloc failed\n");
-    }
-
+    assert(p);
+    printf("    allocated 16777217 bytes at address: %p\n", p);
     free(p);
 }
 
