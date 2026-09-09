@@ -6,12 +6,12 @@
 #include "tcache.h"
 #include "util.h"
 
-void *malloc(size_t size) {
+void *malloc(size_t requested_size) {
     ensure_global_init();
     
     safe_log_msg("[malloc]: entered malloc\n");
 
-    if (size == 0) {
+    if (requested_size == 0) {
         safe_log_msg("[malloc]: requested size is 0, return NULL\n");
         return NULL;
     }
@@ -22,24 +22,24 @@ void *malloc(size_t size) {
         safe_log_msg("[malloc]: failed to find arena; return NULL\n");
         return NULL;
     }
+    
+    size_t aligned_payload_size = align_16(requested_size);
+    size_t chunk_size = align_16(sizeof(chunk_prefix_t) + aligned_payload_size);
+    size_t min_chunk_size = get_free_chunk_min_size();
 
-    size_t payload = align_16(size);
-    size_t need_total = align_16(sizeof(chunk_prefix_t) + payload);     // prefix + header
-    size_t min_chunk = get_free_chunk_min_size();
-
-    if (need_total < min_chunk) {
-        need_total = min_chunk;
+    if (chunk_size < min_chunk_size) {
+        chunk_size = min_chunk_size;
     }
 
-    if (need_total > ARENA_DEFAULT_HEAP_SIZE) {
+    if (chunk_size > ARENA_DEFAULT_MAPPING_SIZE) {
         safe_log_msg("[malloc]: large request alloc path\n");
-        arena_map_new_heap(a, need_total);
-        void *hdr = heap_carve_from_bump(a->active_heap, need_total);
+        arena_mmap_new_heap(a, chunk_size);
+        void *hdr = heap_carve_from_bump(a->active_heap, chunk_size);
         void *ret = chunk_hdr_to_payload(hdr);
         return ret;
     }
 
-    int bin = (int)(need_total / 16) - 2;   // 32->0, 48->1, 64->2 ... smallest is 32 (8 hdr + 16 payload -> 24 -> align -> 32)
+    int bin = (int)(chunk_size / 16) - 2;   // Chunk-size bins: 32->0, 48->1, 64->2, ...; sizes include the prefix.
 
     if (bin < 0 || bin >= TCACHE_MAX_BINS) bin = -1;
 
@@ -65,11 +65,11 @@ void *malloc(size_t size) {
 
         platform_mutex_lock(&a->lock);
 
-        hdr = free_list_try(a, need_total);
+        hdr = free_list_try(a, chunk_size);
 
         if (!hdr) {
             safe_log_msg("[malloc]: freelist miss, carve from top\n");
-            hdr = heap_carve_from_bump(a->active_heap, need_total);     // if free list miss, carve from top
+            hdr = heap_carve_from_bump(a->active_heap, chunk_size);     // if free list miss, carve from top
 
             if (!hdr) {
                 safe_log_msg("[malloc]: malloc failed, return NULL\n");
@@ -97,7 +97,7 @@ void free(void *ptr) {
     ensure_global_init();
 
     uint8_t *hdr = (uint8_t*)chunk_payload_to_hdr(ptr);
-    size_t csz = chunk_get_size(hdr);
+    size_t chunk_size = chunk_get_size(hdr);
     heap_t *h = chunk_get_heap(hdr);   // Route to the owning heap/arena (cross-thread correct)
     
     if (!h) {
@@ -112,7 +112,7 @@ void free(void *ptr) {
         return;
     }
     
-    int bin = (int)(csz / 16) - 2;
+    int bin = (int)(chunk_size / 16) - 2;
 
     if (bin < 0 || bin >= TCACHE_MAX_BINS) {
         bin = -1;
@@ -144,15 +144,15 @@ void free(void *ptr) {
     safe_log_msg("[free]: free to freelist\n");
     platform_mutex_lock(&a->lock);
 
-    chunk_write_size_to_hdr(hdr, csz);
-    chunk_write_ftr(hdr, csz);
+    chunk_write_size_to_hdr(hdr, chunk_size);
+    chunk_write_ftr(hdr, chunk_size);
 
     safe_log_msg("[free]: merge free chunk\n");
     free_chunk_t *merged = heap_coalesce_free_chunk(h, hdr);
 
-    size_t msz = chunk_get_size(merged);
+    size_t merged_chunk_size = chunk_get_size(merged);
 
-    uint8_t *merged_end = (uint8_t*)merged + msz;
+    uint8_t *merged_end = (uint8_t*)merged + merged_chunk_size;
 
     heap_set_next_chunk_P(h, merged, 0);
 
@@ -164,7 +164,7 @@ void free(void *ptr) {
         // unmap heap if it is completely free
         if (h->bump == h->base && !(a->heaps == h && h->next == NULL)) {
             safe_log_msg("[free]: heap unused, unmap heap\n");
-            arena_unmap_heap(a, h);
+            arena_munmap_heap(a, h);
         }
 
         platform_mutex_unlock(&a->lock);

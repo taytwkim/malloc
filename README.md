@@ -1,6 +1,6 @@
 # Memory Allocator
 
-`taymalloc` is a memory allocator library that can be dynamically linked into existing Linux codebases.
+Implement a memory allocator from scratch in C that can be dynamically interposed in Linux codebases.
 
 ## Usage
 
@@ -10,7 +10,7 @@
 make
 ```
 
-2. Compile target code, then `LD_PRELOAD` to replace system's default `malloc` with `taymalloc`.
+2. Compile target code, then `LD_PRELOAD` to replace the default `malloc` with `taymalloc`.
 
 ```shell
 # Compile target code
@@ -20,7 +20,7 @@ gcc tests/hello.c -o build/hello
 LD_PRELOAD=./build/libtaymalloc.so ./build/hello
 ```
 
-For quick tests on non-Linux platforms, use `docker_run.sh` to spin up a Linux container and run the tests.
+For quick tests on non-Linux platforms, use `docker_run.sh` to spin up a Linux container and run tests.
 
 ```shell
 ./scripts/docker_run.sh tests/hello.c

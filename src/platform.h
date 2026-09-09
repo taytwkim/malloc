@@ -18,7 +18,7 @@ int platform_call_once(platform_once_t *once_control, void (*init_routine)(void)
 size_t platform_page_size(void);
 int platform_cpu_count(void);
 
-void *platform_map_memory(size_t size);
-int platform_unmap_memory(void *addr, size_t size);
+void *platform_mmap(size_t size);
+int platform_munmap(void *addr, size_t size);
 
 #endif

@@ -15,21 +15,21 @@ static platform_mutex_t g_arena_assign_lock = PLATFORM_MUTEX_INITIALIZER;
     static __thread arena_t *t_arena = NULL;
 #endif
 
-int arena_map_new_heap(arena_t *a, size_t need_total) {
-    size_t req = align_pagesize(need_total);
+int arena_mmap_new_heap(arena_t *a, size_t mapping_size) {
+    mapping_size = align_pagesize(mapping_size);
 
-    void *mem = platform_map_memory(req);
+    void *mem = platform_mmap(mapping_size);
     if (!mem) return -1;
 
     heap_t *h = (heap_t *)mem;
     h->arena = a;
     h->next = NULL;
     
-    uint8_t *payload = (uint8_t *)mem + sizeof(*h);
+    uint8_t *heap_region_start = (uint8_t *)mem + sizeof(*h);
 
-    h->base = payload;
+    h->base = heap_region_start;
     h->bump = h->base;
-    h->end = (uint8_t *)mem + req;
+    h->end = (uint8_t *)mem + mapping_size;
 
     if (a->heaps == NULL) {
         a->heaps = h;
@@ -45,7 +45,7 @@ int arena_map_new_heap(arena_t *a, size_t need_total) {
     return 0;
 }
 
-int arena_unmap_heap(arena_t *a, heap_t *h) {
+int arena_munmap_heap(arena_t *a, heap_t *h) {
     heap_t *curr = a->heaps;
     heap_t* prev = NULL;
 
@@ -65,8 +65,8 @@ int arena_unmap_heap(arena_t *a, heap_t *h) {
                 a->active_heap = prev;
             }
 
-            size_t map_size = (size_t)((uint8_t *)h->end - (uint8_t *)h);
-            (void)platform_unmap_memory((void *)h, map_size);
+            size_t mapping_size = (size_t)((uint8_t *)h->end - (uint8_t *)h);
+            (void)platform_munmap((void *)h, mapping_size);
             return 0;
         }
         prev = curr;
@@ -80,8 +80,8 @@ static void arena_unmap_all_heaps(arena_t *a) {
 
     while (h) {
         heap_t *next = h->next;
-        size_t map_size = (size_t)((uint8_t *)h->end - (uint8_t *)h);
-        (void)platform_unmap_memory((void *)h, map_size);
+        size_t mapping_size = (size_t)((uint8_t *)h->end - (uint8_t *)h);
+        (void)platform_munmap((void *)h, mapping_size);
         h = next;
     }
     
@@ -96,7 +96,7 @@ static int arena_init(arena_t *a, int id) {
     a->free_list = NULL;
     platform_mutex_init(&a->lock);
 
-    int add_heap_succeeded = arena_map_new_heap(a, ARENA_DEFAULT_HEAP_SIZE);
+    int add_heap_succeeded = arena_mmap_new_heap(a, ARENA_DEFAULT_MAPPING_SIZE);
     
     if (add_heap_succeeded < 0) return -1;
 

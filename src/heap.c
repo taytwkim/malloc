@@ -9,25 +9,25 @@ void heap_set_next_chunk_P(heap_t *h, void *hdr, int P) {
 }
 
 // if the freelist does not have a suitable chunk, carve from bump
-void* heap_carve_from_bump(heap_t *h, size_t need_total) {
+void* heap_carve_from_bump(heap_t *h, size_t chunk_size) {
     uintptr_t start = (uintptr_t) h->bump;
 
     // Ensure payload is 16-byte aligned; header is chunk_prefix_t bytes before payload.
     uintptr_t payload = (start + sizeof(chunk_prefix_t) + 15u) & ~((uintptr_t)15u);
     uint8_t *hdr = (uint8_t*)(payload - sizeof(chunk_prefix_t));
 
-    if ((size_t)(h->end - hdr) < need_total) {
-        int status = arena_map_new_heap(h->arena, ARENA_DEFAULT_HEAP_SIZE);
+    if ((size_t)(h->end - hdr) < chunk_size) {
+        int status = arena_mmap_new_heap(h->arena, ARENA_DEFAULT_MAPPING_SIZE);
 
         if (status == 0) {
-            return heap_carve_from_bump(h->arena->active_heap, need_total);
+            return heap_carve_from_bump(h->arena->active_heap, chunk_size);
         }
         else {
             return NULL;
         }
     }
 
-    chunk_write_size_to_hdr(hdr, need_total);
+    chunk_write_size_to_hdr(hdr, chunk_size);
 
     // Note that the chunk right before the bump is in-use.
     // If we are at the base, its safe to say that the previous chunk is "in-use",
@@ -36,7 +36,7 @@ void* heap_carve_from_bump(heap_t *h, size_t need_total) {
     chunk_set_P(hdr, 1);
     chunk_set_heap(hdr, h);
 
-    h->bump = hdr + need_total;
+    h->bump = hdr + chunk_size;
     return hdr;
 }
 
@@ -58,7 +58,7 @@ static int heap_is_first_chunk(heap_t *h, void *hdr) {
 
 // merge chunk with adjacent free chunks (adjacent in memory, not in the linked list)
 void* heap_coalesce_free_chunk(heap_t *h, void *hdr) {
-    size_t csz = chunk_get_size(hdr);
+    size_t existing_chunk_size = chunk_get_size(hdr);
     void *nxt = get_next_chunk_hdr(hdr);
 
     // merge with right chunk
@@ -67,11 +67,11 @@ void* heap_coalesce_free_chunk(heap_t *h, void *hdr) {
         // so if the next header is the last chunk in the heap, it is not safe to call chunk_is_free, we are reading
         // from the unexplored region.
         if (!heap_is_last_chunk(h, nxt) && chunk_is_free(nxt)) {
-            size_t nxt_sz = chunk_get_size(nxt);
+            size_t next_chunk_size = chunk_get_size(nxt);
             free_list_remove(h->arena, (free_chunk_t*)nxt);
-            csz += nxt_sz;
-            chunk_write_size_to_hdr(hdr, csz);
-            chunk_write_ftr(hdr, csz);
+            existing_chunk_size += next_chunk_size;
+            chunk_write_size_to_hdr(hdr, existing_chunk_size);
+            chunk_write_ftr(hdr, existing_chunk_size);
         }
     }
 
@@ -79,12 +79,12 @@ void* heap_coalesce_free_chunk(heap_t *h, void *hdr) {
     if (!heap_is_first_chunk(h, hdr) && prev_chunk_is_free(hdr)) {
         uint8_t *p = (uint8_t*) hdr;
         void *prev_footer = (p - sizeof(size_t));
-        size_t prev_sz = chunk_get_size(prev_footer);
-        void *prv = p - prev_sz;
+        size_t previous_chunk_size = chunk_get_size(prev_footer);
+        void *prv = p - previous_chunk_size;
         free_list_remove(h->arena, (free_chunk_t*) prv);
-        csz += prev_sz;
-        chunk_write_size_to_hdr(prv, csz);
-        chunk_write_ftr(prv, csz);
+        existing_chunk_size += previous_chunk_size;
+        chunk_write_size_to_hdr(prv, existing_chunk_size);
+        chunk_write_ftr(prv, existing_chunk_size);
         hdr = prv;
     }
 
@@ -92,27 +92,27 @@ void* heap_coalesce_free_chunk(heap_t *h, void *hdr) {
 }
 
 // if the free chunk is large enough, split the chunk
-void* heap_split_free_chunk(heap_t *h, free_chunk_t *fc, size_t need) {
-    size_t csz = chunk_get_size(fc);
-    const size_t MIN_FREE = get_free_chunk_min_size();
+void* heap_split_free_chunk(heap_t *h, free_chunk_t *fc, size_t chunk_size) {
+    size_t existing_chunk_size = chunk_get_size(fc);
+    const size_t min_chunk_size = get_free_chunk_min_size();
 
-    if (csz >= need + MIN_FREE) {
+    if (existing_chunk_size >= chunk_size + min_chunk_size) {
         // split chunk
         free_list_remove(h->arena, fc);
 
         uint8_t *base = (uint8_t*)fc;
 
         // allocated chunk header
-        chunk_write_size_to_hdr(base, need);
+        chunk_write_size_to_hdr(base, chunk_size);
         chunk_set_heap(base, h);
         heap_set_next_chunk_P(h, base, 1);
 
         // remainder chunk
-        uint8_t *rem = base + need;
-        size_t rem_sz = csz - need;
+        uint8_t *rem = base + chunk_size;
+        size_t remainder_chunk_size = existing_chunk_size - chunk_size;
 
-        chunk_write_size_to_hdr(rem, rem_sz);
-        chunk_write_ftr(rem, rem_sz);
+        chunk_write_size_to_hdr(rem, remainder_chunk_size);
+        chunk_write_ftr(rem, remainder_chunk_size);
         chunk_set_heap(rem, h);
 
         ((free_chunk_t*)rem)->prev = NULL;

@@ -6,7 +6,10 @@
 #include "platform.h"
 
 #define MAX_NUM_ARENAS 64
-#define ARENA_DEFAULT_HEAP_SIZE (size_t) 16 * 1024 * 1024
+
+// Total mapping bytes, including heap_t and initial alignment padding.
+// Actual heap_capacity (space for chunks) is smaller than this value.
+#define ARENA_DEFAULT_MAPPING_SIZE ((size_t)16 * 1024 * 1024)
 
 typedef struct arena {
     int id;
@@ -16,10 +19,11 @@ typedef struct arena {
     platform_mutex_t lock;
 } arena_t;
 
-int arena_map_new_heap(arena_t *a, size_t need_total);
+// Round mapping_size up to a page and place heap_t inside that mapping.
+int arena_mmap_new_heap(arena_t *a, size_t mapping_size);
 
 // find heap and remove from the linked list
-int arena_unmap_heap(arena_t *a, heap_t *h);
+int arena_munmap_heap(arena_t *a, heap_t *h);
 
 // for malloc, we want to allocate from the thread-specific arena
 arena_t *arena_from_thread(void);

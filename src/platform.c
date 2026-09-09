@@ -44,11 +44,11 @@ int platform_cpu_count(void) {
     return (int)cpu_count;
 }
 
-void *platform_map_memory(size_t size) {
+void *platform_mmap(size_t size) {
     void *mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     return mem == MAP_FAILED ? NULL : mem;
 }
 
-int platform_unmap_memory(void *addr, size_t size) {
+int platform_munmap(void *addr, size_t size) {
     return munmap(addr, size);
 }
