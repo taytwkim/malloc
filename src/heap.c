@@ -34,6 +34,7 @@ void* heap_carve_from_bump(heap_t *h, size_t chunk_size) {
     // so we don't try to merge with left neighbor later when the chunk is freed.
 
     chunk_set_P(hdr, 1);
+    chunk_set_M(hdr, 0);
     chunk_set_heap(hdr, h);
 
     h->bump = hdr + chunk_size;
@@ -112,6 +113,7 @@ void* heap_split_free_chunk(heap_t *h, free_chunk_t *fc, size_t chunk_size) {
         size_t remainder_chunk_size = existing_chunk_size - chunk_size;
 
         chunk_write_size_to_hdr(rem, remainder_chunk_size);
+        chunk_set_M(rem, 0);
         chunk_write_ftr(rem, remainder_chunk_size);
         chunk_set_heap(rem, h);
 

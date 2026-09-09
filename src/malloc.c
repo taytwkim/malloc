@@ -23,20 +23,38 @@ void *malloc(size_t requested_size) {
         return NULL;
     }
     
-    size_t aligned_payload_size = align_16(requested_size);
-    size_t chunk_size = align_16(sizeof(chunk_prefix_t) + aligned_payload_size);
+    size_t chunk_size = align_16(sizeof(chunk_prefix_t) + requested_size);
+
+    // A smaller result means the size calculation exceeded SIZE_MAX and wrapped around.
+    if (chunk_size < requested_size) {
+        return NULL;
+    }
+
     size_t min_chunk_size = get_free_chunk_min_size();
 
     if (chunk_size < min_chunk_size) {
         chunk_size = min_chunk_size;
     }
+    
+    size_t heap_capacity = ARENA_DEFAULT_MAPPING_SIZE - align_16(sizeof(heap_t));
 
-    if (chunk_size > ARENA_DEFAULT_MAPPING_SIZE) {
+    if (chunk_size > heap_capacity) {
         safe_log_msg("[malloc]: large request alloc path\n");
-        arena_mmap_new_heap(a, chunk_size);
-        void *hdr = heap_carve_from_bump(a->active_heap, chunk_size);
-        void *ret = chunk_hdr_to_payload(hdr);
-        return ret;
+
+        size_t mapping_size = align_pagesize(chunk_size);
+        if (mapping_size < chunk_size) {
+            return NULL;
+        }
+
+        void *mem = platform_mmap(mapping_size);
+        if (!mem) return NULL;
+
+        chunk_prefix_t *hdr = mem;
+        chunk_write_size_to_hdr(hdr, mapping_size);
+        chunk_set_M(hdr, 1);
+        chunk_set_heap(hdr, NULL);
+
+        return chunk_hdr_to_payload(hdr);
     }
 
     int bin = (int)(chunk_size / 16) - 2;   // Chunk-size bins: 32->0, 48->1, 64->2, ...; sizes include the prefix.
@@ -98,6 +116,12 @@ void free(void *ptr) {
 
     uint8_t *hdr = (uint8_t*)chunk_payload_to_hdr(ptr);
     size_t chunk_size = chunk_get_size(hdr);
+
+    if (chunk_get_M(*(size_t *)hdr)) {
+        platform_munmap(hdr, chunk_get_size(hdr));
+        return;
+    }
+
     heap_t *h = chunk_get_heap(hdr);   // Route to the owning heap/arena (cross-thread correct)
     
     if (!h) {

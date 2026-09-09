@@ -9,7 +9,7 @@ typedef struct arena arena_t;
 typedef struct heap {
     arena_t *arena;
     struct heap *next;
-    uint8_t *base;         // Immediately after heap_t; initial alignment padding is not skipped.
+    uint8_t *base;         // First chunk header, after heap_t and alignment padding.
     uint8_t *bump;         // Frontier of carved chunks; initially base.
     uint8_t *end;          // One past the entire mapping, including page-rounding slack.
 } heap_t;

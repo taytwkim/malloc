@@ -6,13 +6,13 @@ Implement a memory allocator from scratch in C that can be dynamically interpose
 
 1. Build `libtaymalloc.so`.
 
-```shell
+```bash
 make
 ```
 
-2. Compile target code, then `LD_PRELOAD` to replace the default `malloc` with `taymalloc`.
+2. Compile target code, then use `LD_PRELOAD` to replace the system's default `malloc` with `taymalloc`.
 
-```shell
+```bash
 # Compile target code
 gcc tests/hello.c -o build/hello
 
@@ -22,7 +22,7 @@ LD_PRELOAD=./build/libtaymalloc.so ./build/hello
 
 For quick tests on non-Linux platforms, use `docker_run.sh` to spin up a Linux container and run tests.
 
-```shell
+```bash
 ./scripts/docker_run.sh tests/hello.c
 
 # Pass in environment variables
