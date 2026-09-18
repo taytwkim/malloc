@@ -15,7 +15,7 @@ typedef struct arena {
     int id;
     heap_t *heaps;
     heap_t *active_heap;    // for now, let's assume that the active_heap is always the heap that was most recently added
-    free_chunk_t *free_list;
+    free_chunk_prefix_t *free_list;
     platform_mutex_t lock;
 } arena_t;
 

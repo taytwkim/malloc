@@ -25,7 +25,7 @@ int arena_mmap_new_heap(arena_t *a, size_t mapping_size) {
     h->arena = a;
     h->next = NULL;
     
-    size_t first_chunk_offset = align_16(sizeof(*h) + sizeof(chunk_prefix_t)) - sizeof(chunk_prefix_t);
+    size_t first_chunk_offset = align_16(sizeof(*h) + sizeof(inuse_chunk_prefix_t)) - sizeof(inuse_chunk_prefix_t);
     h->base = (uint8_t *)mem + first_chunk_offset;
     h->bump = h->base;
     h->end = (uint8_t *)mem + mapping_size;

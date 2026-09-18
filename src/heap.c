@@ -12,9 +12,9 @@ void heap_set_next_chunk_P(heap_t *h, void *hdr, int P) {
 void* heap_carve_from_bump(heap_t *h, size_t chunk_size) {
     uintptr_t start = (uintptr_t) h->bump;
 
-    // Ensure payload is 16-byte aligned; header is chunk_prefix_t bytes before payload.
-    uintptr_t payload = (start + sizeof(chunk_prefix_t) + 15u) & ~((uintptr_t)15u);
-    uint8_t *hdr = (uint8_t*)(payload - sizeof(chunk_prefix_t));
+    // Ensure payload is 16-byte aligned; header is inuse_chunk_prefix_t bytes before payload.
+    uintptr_t payload = (start + sizeof(inuse_chunk_prefix_t) + 15u) & ~((uintptr_t)15u);
+    uint8_t *hdr = (uint8_t*)(payload - sizeof(inuse_chunk_prefix_t));
 
     if ((size_t)(h->end - hdr) < chunk_size) {
         int status = arena_mmap_new_heap(h->arena, ARENA_DEFAULT_MAPPING_SIZE);
@@ -49,8 +49,8 @@ static int heap_is_last_chunk(heap_t *h, void *hdr) {
 
 static uint8_t *heap_first_chunk_hdr(heap_t *h) {
     uintptr_t start = (uintptr_t)h->base;
-    uintptr_t payload = (start + sizeof(chunk_prefix_t) + 15u) & ~((uintptr_t)15u);
-    return (uint8_t *)(payload - sizeof(chunk_prefix_t));
+    uintptr_t payload = (start + sizeof(inuse_chunk_prefix_t) + 15u) & ~((uintptr_t)15u);
+    return (uint8_t *)(payload - sizeof(inuse_chunk_prefix_t));
 }
 
 static int heap_is_first_chunk(heap_t *h, void *hdr) {
@@ -69,7 +69,7 @@ void* heap_coalesce_free_chunk(heap_t *h, void *hdr) {
         // from the unexplored region.
         if (!heap_is_last_chunk(h, nxt) && chunk_is_free(nxt)) {
             size_t next_chunk_size = chunk_get_size(nxt);
-            free_list_remove(h->arena, (free_chunk_t*)nxt);
+            free_list_remove(h->arena, (free_chunk_prefix_t*)nxt);
             existing_chunk_size += next_chunk_size;
             chunk_write_size_to_hdr(hdr, existing_chunk_size);
             chunk_write_ftr(hdr, existing_chunk_size);
@@ -82,7 +82,7 @@ void* heap_coalesce_free_chunk(heap_t *h, void *hdr) {
         void *prev_footer = (p - sizeof(size_t));
         size_t previous_chunk_size = chunk_get_size(prev_footer);
         void *prv = p - previous_chunk_size;
-        free_list_remove(h->arena, (free_chunk_t*) prv);
+        free_list_remove(h->arena, (free_chunk_prefix_t*) prv);
         existing_chunk_size += previous_chunk_size;
         chunk_write_size_to_hdr(prv, existing_chunk_size);
         chunk_write_ftr(prv, existing_chunk_size);
@@ -93,7 +93,7 @@ void* heap_coalesce_free_chunk(heap_t *h, void *hdr) {
 }
 
 // if the free chunk is large enough, split the chunk
-void* heap_split_free_chunk(heap_t *h, free_chunk_t *fc, size_t chunk_size) {
+void* heap_split_free_chunk(heap_t *h, free_chunk_prefix_t *fc, size_t chunk_size) {
     size_t existing_chunk_size = chunk_get_size(fc);
     const size_t min_chunk_size = get_free_chunk_min_size();
 
@@ -117,9 +117,9 @@ void* heap_split_free_chunk(heap_t *h, free_chunk_t *fc, size_t chunk_size) {
         chunk_write_ftr(rem, remainder_chunk_size);
         chunk_set_heap(rem, h);
 
-        ((free_chunk_t*)rem)->prev = NULL;
-        ((free_chunk_t*)rem)->next = NULL;
-        free_list_push_front(h->arena, (free_chunk_t*)rem);
+        ((free_chunk_prefix_t*)rem)->prev = NULL;
+        ((free_chunk_prefix_t*)rem)->next = NULL;
+        free_list_push_front(h->arena, (free_chunk_prefix_t*)rem);
 
         return base;
     }

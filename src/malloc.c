@@ -23,7 +23,7 @@ void *malloc(size_t requested_size) {
         return NULL;
     }
     
-    size_t chunk_size = align_16(sizeof(chunk_prefix_t) + requested_size);
+    size_t chunk_size = align_16(sizeof(inuse_chunk_prefix_t) + requested_size);
 
     // A smaller result means the size calculation exceeded SIZE_MAX and wrapped around.
     if (chunk_size < requested_size) {
@@ -49,7 +49,7 @@ void *malloc(size_t requested_size) {
         void *mem = platform_mmap(mapping_size);
         if (!mem) return NULL;
 
-        chunk_prefix_t *hdr = mem;
+        inuse_chunk_prefix_t *hdr = mem;
         chunk_write_size_to_hdr(hdr, mapping_size);
         chunk_set_M(hdr, 1);
         chunk_set_heap(hdr, NULL);
@@ -70,7 +70,7 @@ void *malloc(size_t requested_size) {
         tcache_bin_t *b = &g_tcache[bin];
 
         if (b->head != NULL) {
-            free_chunk_t *fc = b->head;
+            free_chunk_prefix_t *fc = b->head;
             b->head = fc->prev;
             b->count--;
             hdr = (void*)fc;
@@ -117,7 +117,7 @@ void free(void *ptr) {
     uint8_t *hdr = (uint8_t*)chunk_payload_to_hdr(ptr);
     size_t chunk_size = chunk_get_size(hdr);
 
-    if (chunk_get_M(*(size_t *)hdr)) {
+    if (chunk_get_M(hdr)) {
         platform_munmap(hdr, chunk_get_size(hdr));
         return;
     }
@@ -152,7 +152,7 @@ void free(void *ptr) {
         tcache_bin_t *b = &g_tcache[bin];
 
         if (b->count < TCACHE_MAX_COUNT) {
-            free_chunk_t *fc = (free_chunk_t*)hdr;
+            free_chunk_prefix_t *fc = (free_chunk_prefix_t*)hdr;
 
             // IMPORTANT: do NOT mark as free, do NOT set footer, do NOT coalesce.
             // Chunk stays "in-use" from the global allocator's point of view.
@@ -172,7 +172,7 @@ void free(void *ptr) {
     chunk_write_ftr(hdr, chunk_size);
 
     safe_log_msg("[free]: merge free chunk\n");
-    free_chunk_t *merged = heap_coalesce_free_chunk(h, hdr);
+    free_chunk_prefix_t *merged = heap_coalesce_free_chunk(h, hdr);
 
     size_t merged_chunk_size = chunk_get_size(merged);
 
@@ -195,11 +195,11 @@ void free(void *ptr) {
         return;
     }
 
-    ((free_chunk_t*)merged)->prev = NULL;
-    ((free_chunk_t*)merged)->next = NULL;
+    ((free_chunk_prefix_t*)merged)->prev = NULL;
+    ((free_chunk_prefix_t*)merged)->next = NULL;
 
     safe_log_msg("[free]: push free chunk to freelist\n");
-    free_list_push_front(a, (free_chunk_t*)merged);
+    free_list_push_front(a, (free_chunk_prefix_t*)merged);
 
     platform_mutex_unlock(&a->lock);
 }

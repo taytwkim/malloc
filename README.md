@@ -2,7 +2,7 @@
 
 Implement a memory allocator from scratch in C that can be dynamically interposed in Linux codebases.
 
-## Usage
+## Getting Started
 
 1. Build `libtaymalloc.so`.
 
@@ -16,7 +16,7 @@ make
 # Compile target code
 gcc tests/hello.c -o build/hello
 
-# Inject taymalloc
+# Load taymalloc
 LD_PRELOAD=./build/libtaymalloc.so ./build/hello
 ```
 

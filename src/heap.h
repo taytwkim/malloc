@@ -23,6 +23,6 @@ void* heap_carve_from_bump(heap_t *h, size_t chunk_size);
 void* heap_coalesce_free_chunk(heap_t *h, void *hdr);
 
 // if the free chunk is large enough, split the chunk
-void* heap_split_free_chunk(heap_t *h, free_chunk_t *fc, size_t chunk_size);
+void* heap_split_free_chunk(heap_t *h, free_chunk_prefix_t *fc, size_t chunk_size);
 
 #endif

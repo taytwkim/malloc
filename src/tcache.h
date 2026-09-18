@@ -7,7 +7,7 @@
 #include "chunk.h"
 
 typedef struct tcache_bin {
-    free_chunk_t *head;   // head of the linked list
+    free_chunk_prefix_t *head;   // head of the linked list
     int count;
 } tcache_bin_t;
 
