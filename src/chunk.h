@@ -6,7 +6,7 @@
 #include "util.h"       // align_16
 
 /* 
- * chunk layout
+ * CHUNK LAYOUT
 
  * in-use:    [ header (size | flags) ]       8 bytes (in a 64 bit machine)
  *            [ owning heap ptr       ]       8 bytes
@@ -16,10 +16,12 @@
  *            [ owning heap ptr       ]       8 bytes
  *            [ fd                    ]       8 bytes, forward pointer to the next free chunk
  *            [ bk                    ]       8 bytes, backward pointer to the prev free chunk
- *            ... 
+ * 
+ *            ...
+ * 
  *            [ footer (size )        ]       8 bytes, same as the header, but flag bits are zeros
  * 
- * flags
+ * FLAGS
  *  
  *    - bit 0: PREV_IN_USE_BIT (P)
  *          We need this flag when merging two chunks.
