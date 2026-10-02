@@ -37,8 +37,8 @@ echo "$PRELOAD_VAR=./build/$LIB_NAME ./build/hello"
 
 echo ""
 
-echo "To check that the symbol has been injected, set TAYMALLOC_INJECTED:"
-echo "TAYMALLOC_INJECTED=1 $PRELOAD_VAR=./build/$LIB_NAME ./build/hello"
+echo "To check that the symbol has been injected, set TAYMALLOC_HELLO:"
+echo "TAYMALLOC_HELLO=1 $PRELOAD_VAR=./build/$LIB_NAME ./build/hello"
 
 echo ""
 

@@ -1,5 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdio.h>   // printf
+#include <stdlib.h>  // malloc, free
 
 int main(void) {
     void* p = malloc(16);

@@ -1,7 +1,7 @@
-#ifndef MY_ALLOC_H
-#define MY_ALLOC_H
+#ifndef TAYMALLOC_H
+#define TAYMALLOC_H
 
-#include <stddef.h> // for size_t
+#include <stddef.h>  // size_t
 
 void *malloc(size_t requested_size);
 

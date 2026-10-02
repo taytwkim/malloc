@@ -7,7 +7,7 @@ CC = cc
 CFLAGS = -std=c11 -Wall -Wextra -O2 -fPIC -pthread
 LDFLAGS = -shared -pthread
 
-SRCS = src/arena.c src/config.c src/freelist.c src/heap.c src/malloc.c src/platform.c
+SRCS = src/arena.c src/env.c src/freelist.c src/heap.c src/malloc.c
 OBJS = $(patsubst src/%.c, build/%.o, $(SRCS)) # substitute src/%.c to build/%.o
 
 LIB_NAME = libtaymalloc.so

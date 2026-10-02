@@ -1,8 +1,8 @@
 // tests/parallel.c
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <omp.h>
+#include <omp.h>     // omp_get_thread_num
+#include <stdio.h>   // printf, fprintf, stderr
+#include <stdlib.h>  // malloc, free, atoi, strtoull, size_t, NULL
+#include <string.h>  // memset
 
 static void print_usage(const char *prog) {
     fprintf(stderr, "Usage: %s [num_threads] [num_iters]\n", prog);
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    printf("test2: multithreaded test\n");
+    printf("Multi-threaded test\n");
     printf("    # threads = %d, # iters per thread = %zu\n", num_threads, num_iters);
 
     int errors = 0;

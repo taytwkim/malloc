@@ -1,10 +1,19 @@
-#include "arena.h"
-#include "config.h"
-#include "debug.h"
-#include "freelist.h"
-#include "heap.h"
-#include "tcache.h"
-#include "util.h"
+#define _DEFAULT_SOURCE
+#include "malloc.h"  // malloc, free declarations
+
+#include <pthread.h>   // pthread_mutex_lock, pthread_mutex_unlock
+#include <stddef.h>    // size_t, NULL
+#include <stdint.h>    // uint8_t
+#include <sys/mman.h>  // mmap, munmap, mapping flags
+
+#include "arena.h"     // arena_t and arena management
+#include "chunk.h"     // chunk metadata and accessors
+#include "debug.h"     // safe_log_msg, safe_log_ptr
+#include "env.h"       // g_cfg
+#include "freelist.h"  // free_list_try, free_list_push_front
+#include "heap.h"      // heap_t layout, carving and coalescing
+#include "tcache.h"    // per-thread cache and bin limits
+#include "util.h"      // align_16, align_pagesize
 
 void *malloc(size_t requested_size) {
     ensure_global_init();
@@ -30,24 +39,25 @@ void *malloc(size_t requested_size) {
         return NULL;
     }
 
-    size_t min_chunk_size = get_free_chunk_min_size();
+    size_t min_chunk_size = align_16(sizeof(free_chunk_prefix_t) + sizeof(size_t));
 
     if (chunk_size < min_chunk_size) {
         chunk_size = min_chunk_size;
     }
     
-    size_t heap_capacity = ARENA_DEFAULT_MAPPING_SIZE - align_16(sizeof(heap_t));
+    size_t max_heap_capacity = ARENA_DEFAULT_MAPPING_SIZE - align_16(sizeof(heap_t));
 
-    if (chunk_size > heap_capacity) {
+    if (chunk_size > max_heap_capacity) {
         safe_log_msg("[malloc]: large request alloc path\n");
 
         size_t mapping_size = align_pagesize(chunk_size);
+
         if (mapping_size < chunk_size) {
             return NULL;
         }
 
-        void *mem = platform_mmap(mapping_size);
-        if (!mem) return NULL;
+        void *mem = mmap(NULL, mapping_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (mem == MAP_FAILED) return NULL;
 
         inuse_chunk_prefix_t *hdr = mem;
         chunk_write_size_to_hdr(hdr, mapping_size);
@@ -58,12 +68,11 @@ void *malloc(size_t requested_size) {
     }
 
     int bin = (int)(chunk_size / 16) - 2;   // Chunk-size bins: 32->0, 48->1, 64->2, ...; sizes include the prefix.
-
     if (bin < 0 || bin >= TCACHE_MAX_BINS) bin = -1;
 
-    // 1) Try tcache first
     void *hdr = NULL;
 
+    // 1) Try tcache first
     if (!g_cfg.disable_tcache && bin >= 0) {
         safe_log_msg("[malloc]: searching tcache\n");
 
@@ -81,7 +90,7 @@ void *malloc(size_t requested_size) {
     if (!hdr) {
         safe_log_msg("[malloc]: searching freelist\n");
 
-        platform_mutex_lock(&a->lock);
+        pthread_mutex_lock(&a->lock);
 
         hdr = free_list_try(a, chunk_size);
 
@@ -91,11 +100,12 @@ void *malloc(size_t requested_size) {
 
             if (!hdr) {
                 safe_log_msg("[malloc]: malloc failed, return NULL\n");
-                platform_mutex_unlock(&a->lock);
+                pthread_mutex_unlock(&a->lock);
                 return NULL;
             }
         }
-        platform_mutex_unlock(&a->lock);
+
+        pthread_mutex_unlock(&a->lock);
     }
 
     void *ret = chunk_hdr_to_payload(hdr);
@@ -118,7 +128,7 @@ void free(void *ptr) {
     size_t chunk_size = chunk_get_size(hdr);
 
     if (chunk_get_M(hdr)) {
-        platform_munmap(hdr, chunk_get_size(hdr));
+        munmap(hdr, chunk_get_size(hdr));
         return;
     }
 
@@ -166,7 +176,7 @@ void free(void *ptr) {
 
     // 2) Fall back to global free path: mark free, coalesce in the owning heap, push to arena freelist.
     safe_log_msg("[free]: free to freelist\n");
-    platform_mutex_lock(&a->lock);
+    pthread_mutex_lock(&a->lock);
 
     chunk_write_size_to_hdr(hdr, chunk_size);
     chunk_write_ftr(hdr, chunk_size);
@@ -191,7 +201,7 @@ void free(void *ptr) {
             arena_munmap_heap(a, h);
         }
 
-        platform_mutex_unlock(&a->lock);
+        pthread_mutex_unlock(&a->lock);
         return;
     }
 
@@ -201,5 +211,5 @@ void free(void *ptr) {
     safe_log_msg("[free]: push free chunk to freelist\n");
     free_list_push_front(a, (free_chunk_prefix_t*)merged);
 
-    platform_mutex_unlock(&a->lock);
+    pthread_mutex_unlock(&a->lock);
 }

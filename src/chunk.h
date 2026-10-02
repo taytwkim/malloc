@@ -1,14 +1,13 @@
-#ifndef MYALLOC_CHUNK_H
-#define MYALLOC_CHUNK_H
+#ifndef TAYMALLOC_CHUNK_H
+#define TAYMALLOC_CHUNK_H
 
-#include <stddef.h>     // size_t
-#include <stdint.h>     // uint8_t
-#include "util.h"       // align_16
+#include <stddef.h>  // size_t
+#include <stdint.h>  // uint8_t
 
 /* 
- * CHUNK LAYOUT
-
- * in-use:    [ header (size | flags) ]       8 bytes (in a 64 bit machine)
+ * CHUNK LAYOUT (in a 64 bit machine)
+ *
+ * in-use:    [ header (size | flags) ]       8 bytes
  *            [ owning heap ptr       ]       8 bytes
  *            [ payload ...           ]
  * 
@@ -24,21 +23,22 @@
  * FLAGS
  *  
  *    - bit 0: PREV_IN_USE_BIT (P)
- *          We need this flag when merging two chunks.
+ *          We check this flag when merging two chunks.
  *          When a chunk is freed, we look at its left neighbor and try to merge.
- *          But we want to first make sure that the left chunk is actually free. 
- *          If we naively read from the left chunk's footer without checking, 
+ *          But we want to first make sure that the left neighbor is actually free. 
+ *          If we naively read from the left neighbor's footer without checking, 
  *          we might be reading from the payload of an in-use chunk.
- *          This is not really a problem when merging with the right chunk, 
- *          because both free and in-use chunks have the header.
+ *          This is not really a problem with the right neighbor, 
+ *          because both free and in-use chunks have a header.
  * 
  *    - bit 1: MMAPED (M)
- *          If the request size is large enough, malloc uses the large-allocation path
- *          and mmaps a separate region. These regions are not part of any arena or heap
- *          and can be released directly with munmap().
+ *          If the request size is large enough, malloc falls back to the large-allocation 
+ *          path and mmaps a separate region.
+ *          These regions are not part of any arena or heap
+ *          and can be unmapped directly with munmap().
  * 
  * Note: the reason why we can store the chunk size and the flags in a single header 
- * is because the chunk size is 16 aligned in a 64-bit machine.
+ * is because the chunk size is 16-aligned.
  * This means that the low four bits of the chunk size will always be zero,
  * so we can use these bits to store metadata.
  */
@@ -126,10 +126,6 @@ static inline heap_t* chunk_get_heap(void *hdr) {
 
 static inline void chunk_set_heap(void *hdr, heap_t *h) { 
     ((inuse_chunk_prefix_t*)hdr)->heap = h;
-}
-
-static inline size_t get_free_chunk_min_size(void) { 
-    return align_16(sizeof(free_chunk_prefix_t) + sizeof(size_t));
 }
 
 #endif

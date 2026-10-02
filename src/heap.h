@@ -1,8 +1,10 @@
-#ifndef MYALLOC_HEAP_H
-#define MYALLOC_HEAP_H
+#ifndef TAYMALLOC_HEAP_H
+#define TAYMALLOC_HEAP_H
 
-#include <stdint.h>
-#include "chunk.h"
+#include <stddef.h>  // size_t
+#include <stdint.h>  // uint8_t
+
+#include "chunk.h"  // free_chunk_prefix_t
 
 typedef struct arena arena_t;
 

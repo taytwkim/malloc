@@ -58,5 +58,5 @@ docker run --rm \
         gcc -std=c11 -Wall -Wextra -O2 -Isrc -D_GNU_SOURCE \"$TEST_SOURCE\" -o \"build/$TEST_NAME\" -lpthread -fopenmp
         echo
         echo \"Running build/$TEST_NAME with LD_PRELOAD=./build/libtaymalloc.so\"
-        TAYMALLOC_INJECTED=1 ${EXTRA_ENV_STRING} LD_PRELOAD=./build/libtaymalloc.so \"./build/$TEST_NAME\"
+        TAYMALLOC_HELLO=1 ${EXTRA_ENV_STRING} LD_PRELOAD=./build/libtaymalloc.so \"./build/$TEST_NAME\"
     "

@@ -1,10 +1,8 @@
-#ifndef TAYMALLOC_CONFIG_H
-#define TAYMALLOC_CONFIG_H
-
-#include <stddef.h>
+#ifndef TAYMALLOC_ENV_H
+#define TAYMALLOC_ENV_H
 
 typedef struct {
-    int injected;
+    int hello;
     int verbose;
     int disable_tcache;
     int disable_arenas;

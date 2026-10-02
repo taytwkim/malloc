@@ -1,25 +1,29 @@
-#include "arena.h"
-#include "util.h"
-#include "config.h"
+#define _DEFAULT_SOURCE
+#include "arena.h"  // arena_t and arena function declarations
 
-static platform_once_t g_once = PLATFORM_ONCE_INIT;
+#include <pthread.h>   // mutexes and one-time initialization
+#include <stddef.h>    // size_t, NULL
+#include <stdint.h>    // uint8_t
+#include <sys/mman.h>  // mmap, munmap, mapping flags
+#include <unistd.h>    // sysconf, _SC_NPROCESSORS_ONLN
+
+#include "chunk.h"  // inuse_chunk_prefix_t
+#include "env.h"    // g_cfg, config_init
+#include "heap.h"   // heap_t layout
+#include "util.h"   // align_16, align_pagesize
+
+static pthread_once_t g_once = PTHREAD_ONCE_INIT;
 static arena_t g_arenas[MAX_NUM_ARENAS];
 static int g_num_arenas = 0;
 static int g_next_arena = 0;
-static platform_mutex_t g_arena_assign_lock = PLATFORM_MUTEX_INITIALIZER;
-
-// If compiled with a specific C standard, the compiler defines __STDC_VERSION__
-#if __STDC_VERSION__ >= 201112L
-    static _Thread_local arena_t *t_arena = NULL;
-#else
-    static __thread arena_t *t_arena = NULL;
-#endif
+static pthread_mutex_t g_arena_assign_lock = PTHREAD_MUTEX_INITIALIZER;
+static _Thread_local arena_t *t_arena = NULL;
 
 int arena_mmap_new_heap(arena_t *a, size_t mapping_size) {
     mapping_size = align_pagesize(mapping_size);
 
-    void *mem = platform_mmap(mapping_size);
-    if (!mem) return -1;
+    void *mem = mmap(NULL, mapping_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem == MAP_FAILED) return -1;
 
     heap_t *h = (heap_t *)mem;
     h->arena = a;
@@ -65,7 +69,7 @@ int arena_munmap_heap(arena_t *a, heap_t *h) {
             }
 
             size_t mapping_size = (size_t)((uint8_t *)h->end - (uint8_t *)h);
-            (void)platform_munmap((void *)h, mapping_size);
+            (void)munmap((void *)h, mapping_size);
             return 0;
         }
         prev = curr;
@@ -80,7 +84,7 @@ static void arena_unmap_all_heaps(arena_t *a) {
     while (h) {
         heap_t *next = h->next;
         size_t mapping_size = (size_t)((uint8_t *)h->end - (uint8_t *)h);
-        (void)platform_munmap((void *)h, mapping_size);
+        (void)munmap((void *)h, mapping_size);
         h = next;
     }
     
@@ -93,7 +97,7 @@ static int arena_init(arena_t *a, int id) {
     a->heaps = NULL;
     a->active_heap = NULL;
     a->free_list = NULL;
-    platform_mutex_init(&a->lock);
+    pthread_mutex_init(&a->lock, NULL);
 
     int add_heap_succeeded = arena_mmap_new_heap(a, ARENA_DEFAULT_MAPPING_SIZE);
     
@@ -111,14 +115,14 @@ arena_t *arena_from_thread(void) {
         return t_arena;
     }
 
-    platform_mutex_lock(&g_arena_assign_lock);
+    pthread_mutex_lock(&g_arena_assign_lock);
 
     int idx = g_next_arena % g_num_arenas;
     g_next_arena++;
 
     t_arena = &g_arenas[idx];
 
-    platform_mutex_unlock(&g_arena_assign_lock);
+    pthread_mutex_unlock(&g_arena_assign_lock);
 
     return t_arena;
 }
@@ -130,12 +134,11 @@ static void global_init(void) {
         g_num_arenas = 1;
     }
     else {
-        g_num_arenas = platform_cpu_count();
+        long cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
+        g_num_arenas = cpu_count < 1 ? 1
+                     : cpu_count > MAX_NUM_ARENAS ? MAX_NUM_ARENAS
+                     : (int)cpu_count;
     }
-
-    if (g_num_arenas < 1) g_num_arenas = 1;
-    
-    if (g_num_arenas > MAX_NUM_ARENAS) g_num_arenas = MAX_NUM_ARENAS;
 
     for (int i = 0; i < g_num_arenas; ++i) {
         if (arena_init(&g_arenas[i], i) < 0) {
@@ -149,5 +152,5 @@ static void global_init(void) {
 }
 
 void ensure_global_init(void) {
-    platform_call_once(&g_once, global_init);
+    pthread_once(&g_once, global_init);
 }

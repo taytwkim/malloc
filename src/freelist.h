@@ -1,8 +1,10 @@
-#ifndef MYALLOC_FREELIST_H
-#define MYALLOC_FREELIST_H
+#ifndef TAYMALLOC_FREELIST_H
+#define TAYMALLOC_FREELIST_H
 
-#include "arena.h"
-#include "heap.h"
+#include <stddef.h>  // size_t
+
+#include "arena.h"  // arena_t
+#include "chunk.h"  // free_chunk_prefix_t
 
 void free_list_remove(arena_t *a, free_chunk_prefix_t *fc);
 

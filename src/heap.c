@@ -1,7 +1,12 @@
-#include "heap.h"
-#include "arena.h"
-#include "freelist.h"
-#include "debug.h"
+#include "heap.h"  // heap_t and heap function declarations
+
+#include <stddef.h>  // size_t, NULL
+#include <stdint.h>  // uint8_t, uintptr_t
+
+#include "arena.h"     // arena_t layout, arena_mmap_new_heap, mapping size
+#include "chunk.h"     // chunk metadata and accessors
+#include "freelist.h"  // free_list_remove, free_list_push_front
+#include "util.h"      // align_16
 
 void heap_set_next_chunk_P(heap_t *h, void *hdr, int P) {
     void *nxt = get_next_chunk_hdr(hdr);
@@ -95,7 +100,7 @@ void* heap_coalesce_free_chunk(heap_t *h, void *hdr) {
 // if the free chunk is large enough, split the chunk
 void* heap_split_free_chunk(heap_t *h, free_chunk_prefix_t *fc, size_t chunk_size) {
     size_t existing_chunk_size = chunk_get_size(fc);
-    const size_t min_chunk_size = get_free_chunk_min_size();
+    const size_t min_chunk_size = align_16(sizeof(free_chunk_prefix_t) + sizeof(size_t));
 
     if (existing_chunk_size >= chunk_size + min_chunk_size) {
         // split chunk

@@ -1,8 +1,10 @@
 #ifndef TAYMALLOC_DEBUG_H
 #define TAYMALLOC_DEBUG_H
 
-#include <unistd.h>
-#include "config.h"
+#include <stddef.h>  // size_t
+#include <unistd.h>  // write, ssize_t, STDOUT_FILENO
+
+#include "env.h"  // g_cfg.verbose
 
 static inline size_t safe_strlen(const char *s) {
     size_t len = 0;

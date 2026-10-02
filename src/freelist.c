@@ -1,5 +1,11 @@
-#include "freelist.h"
-#include "debug.h"
+#include "freelist.h"  // free-list function declarations
+
+#include <stddef.h>  // size_t, NULL
+
+#include "arena.h"  // arena_t layout
+#include "chunk.h"  // chunk metadata and accessors
+#include "debug.h"  // safe_log_msg, safe_log_ptr
+#include "heap.h"   // heap_split_free_chunk
 
 void free_list_remove(arena_t *a, free_chunk_prefix_t *fc) {
     safe_log_msg("[freelist_remove]: entered\n");

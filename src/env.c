@@ -1,22 +1,23 @@
-#include <stdlib.h>
-#include <string.h>
-#include "config.h"
-#include "debug.h"
+#include "env.h"  // taymalloc_config_t, g_cfg, config_init
 
-taymalloc_config_t g_cfg = {0};  // zero-initializes env var
+#include <stdlib.h>  // getenv
+#include <string.h>  // strcmp
+#include <unistd.h>  // write
+
+#include "debug.h"  // ignore_write_result, safe_strlen
+
+taymalloc_config_t g_cfg = {0};  // zero-initializes runtime settings
 
 static int env_is_enabled(const char* name) {
     const char* value = getenv(name);
-    
-    // value is NULL if env var is not set
     return value && strcmp(value, "1") == 0;
 }
 
 void config_init(void) {
-    if (env_is_enabled("TAYMALLOC_INJECTED")) {
+    if (env_is_enabled("TAYMALLOC_HELLO")) {
         char* msg = "WARNING! You are using taymalloc.\n";
         ignore_write_result(write(1, msg, safe_strlen(msg)));
-        g_cfg.injected = 1;
+        g_cfg.hello = 1;
     }
 
     if (env_is_enabled("TAYMALLOC_VERBOSE")) {

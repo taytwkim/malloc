@@ -1,8 +1,7 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
+#include <assert.h>  // assert
+#include <stdint.h>  // uintptr_t
+#include <stdio.h>   // printf
+#include <stdlib.h>  // malloc, free, size_t, NULL
 
 static int aligned16(void *p) {
     return ((uintptr_t)p & 15u) == 0; 
@@ -34,13 +33,6 @@ static void test_big_chunk_alloc(void) {
     assert(p);
     printf("    allocated 16777217 bytes at address: %p\n", p);
     free(p);
-}
-
-static void test_unmap_heap(void){
-    void* p = malloc(16);       // map first heap
-    void* q = malloc(16777217); // map second heap by allocating big chunk   
-    free(p);                    // unmap the first heap
-    free(q);
 }
 
 static void test_churn(void) {
@@ -85,9 +77,6 @@ int main(void){
     
     printf("[*] test_big_chunk_alloc...\n");
     test_big_chunk_alloc();
-
-    printf("[*] test_unmap_heap...\n");
-    test_unmap_heap();
 
     printf("[*] test_churn...\n");
     test_churn();

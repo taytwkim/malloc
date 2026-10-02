@@ -1,10 +1,10 @@
-#ifndef MYALLOC_TCACHE_H
-#define MYALLOC_TCACHE_H
+#ifndef TAYMALLOC_TCACHE_H
+#define TAYMALLOC_TCACHE_H
+
+#include "chunk.h"  // free_chunk_prefix_t
 
 #define TCACHE_MAX_BINS 64
 #define TCACHE_MAX_COUNT 32
-
-#include "chunk.h"
 
 typedef struct tcache_bin {
     free_chunk_prefix_t *head;   // head of the linked list

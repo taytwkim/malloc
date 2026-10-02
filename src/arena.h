@@ -1,9 +1,10 @@
-#ifndef MYALLOC_ARENA_H
-#define MYALLOC_ARENA_H
+#ifndef TAYMALLOC_ARENA_H
+#define TAYMALLOC_ARENA_H
 
-#include "chunk.h"
-#include "heap.h"
-#include "platform.h"
+#include <pthread.h>  // pthread_mutex_t
+#include <stddef.h>   // size_t
+
+#include "chunk.h"  // heap_t, free_chunk_prefix_t
 
 #define MAX_NUM_ARENAS 64
 
@@ -16,7 +17,7 @@ typedef struct arena {
     heap_t *heaps;
     heap_t *active_heap;    // for now, let's assume that the active_heap is always the heap that was most recently added
     free_chunk_prefix_t *free_list;
-    platform_mutex_t lock;
+    pthread_mutex_t lock;
 } arena_t;
 
 // Round mapping_size up to a page and place heap_t inside that mapping.
