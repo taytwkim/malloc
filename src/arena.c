@@ -1,16 +1,16 @@
 #define _DEFAULT_SOURCE
-#include "arena.h"  // arena_t and arena function declarations
+#include "arena.h"
 
-#include <pthread.h>   // mutexes and one-time initialization
-#include <stddef.h>    // size_t, NULL
-#include <stdint.h>    // uint8_t
-#include <sys/mman.h>  // mmap, munmap, mapping flags
-#include <unistd.h>    // sysconf, _SC_NPROCESSORS_ONLN
+#include <pthread.h>    // mutexes and one-time initialization
+#include <stddef.h>     // size_t, NULL
+#include <stdint.h>     // uint8_t
+#include <sys/mman.h>   // mmap, munmap, mapping flags
+#include <unistd.h>     // sysconf, _SC_NPROCESSORS_ONLN
 
-#include "chunk.h"  // inuse_chunk_prefix_t
-#include "env.h"    // g_cfg, config_init
-#include "heap.h"   // heap_t layout
-#include "util.h"   // align_16, align_pagesize
+#include "chunk.h"
+#include "env.h"
+#include "heap.h"
+#include "util.h"
 
 static pthread_once_t g_once = PTHREAD_ONCE_INIT;
 static arena_t g_arenas[MAX_NUM_ARENAS];
@@ -70,11 +70,14 @@ int arena_munmap_heap(arena_t *a, heap_t *h) {
 
             size_t mapping_size = (size_t)((uint8_t *)h->end - (uint8_t *)h);
             (void)munmap((void *)h, mapping_size);
+
             return 0;
         }
+
         prev = curr;
         curr = curr->next;
     }
+
     return -1;
 }
 
@@ -110,7 +113,7 @@ static int arena_init(arena_t *a, int id) {
 arena_t *arena_from_thread(void) {
     if (t_arena) return t_arena;
 
-    if (g_cfg.disable_arenas) {
+    if (g_config.disable_arenas) {
         t_arena = &g_arenas[0];
         return t_arena;
     }
@@ -130,7 +133,7 @@ arena_t *arena_from_thread(void) {
 static void global_init(void) {
     config_init();  // read environment variables once during startup
 
-    if (g_cfg.disable_arenas) {
+    if (g_config.disable_arenas) {
         g_num_arenas = 1;
     }
     else {

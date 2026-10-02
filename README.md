@@ -28,8 +28,3 @@ For quick tests on non-Linux platforms, use `docker_run.sh` to spin up a Linux c
 # Pass in environment variables
 ./scripts/docker_run.sh tests/hello.c TAYMALLOC_HELLO=1
 ```
-
-Allocator environment flags are enabled only when their value is exactly `1`.
-Unset variables, empty values, and other values (including `0`) disable the option.
-This applies to `TAYMALLOC_HELLO`, `TAYMALLOC_VERBOSE`,
-`TAYMALLOC_DISABLE_ARENAS`, and `TAYMALLOC_DISABLE_TCACHE`.

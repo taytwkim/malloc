@@ -1,19 +1,18 @@
 #define _DEFAULT_SOURCE
-#include "malloc.h"  // malloc, free declarations
+#include "malloc.h"
 
-#include <pthread.h>   // pthread_mutex_lock, pthread_mutex_unlock
-#include <stddef.h>    // size_t, NULL
-#include <stdint.h>    // uint8_t
-#include <sys/mman.h>  // mmap, munmap, mapping flags
+#include <pthread.h>    // pthread_mutex_lock, pthread_mutex_unlock
+#include <stddef.h>     // size_t, NULL
+#include <stdint.h>     // uint8_t
+#include <sys/mman.h>   // mmap, munmap, mapping flags
 
-#include "arena.h"     // arena_t and arena management
-#include "chunk.h"     // chunk metadata and accessors
-#include "debug.h"     // safe_log_msg, safe_log_ptr
-#include "env.h"       // g_cfg
-#include "freelist.h"  // free_list_try, free_list_push_front
-#include "heap.h"      // heap_t layout, carving and coalescing
-#include "tcache.h"    // per-thread cache and bin limits
-#include "util.h"      // align_16, align_pagesize
+#include "arena.h"
+#include "chunk.h"
+#include "env.h"
+#include "freelist.h"
+#include "heap.h"
+#include "tcache.h"
+#include "util.h"
 
 void *malloc(size_t requested_size) {
     ensure_global_init();
@@ -73,7 +72,7 @@ void *malloc(size_t requested_size) {
     void *hdr = NULL;
 
     // 1) Try tcache first
-    if (!g_cfg.disable_tcache && bin >= 0) {
+    if (!g_config.disable_tcache && bin >= 0) {
         safe_log_msg("[malloc]: searching tcache\n");
 
         tcache_bin_t *b = &g_tcache[bin];
@@ -156,7 +155,7 @@ void free(void *ptr) {
     // NOTE: this caches into the current thread's tcache even for cross-thread frees.
     // That’s okay for correctness as long as ownership metadata remains in the chunk.
 
-    if (!g_cfg.disable_tcache && bin >= 0) {
+    if (!g_config.disable_tcache && bin >= 0) {
         safe_log_msg("[free]: free to tcache\n");
         
         tcache_bin_t *b = &g_tcache[bin];

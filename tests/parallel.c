@@ -1,4 +1,3 @@
-// tests/parallel.c
 #include <omp.h>     // omp_get_thread_num
 #include <stdio.h>   // printf, fprintf, stderr
 #include <stdlib.h>  // malloc, free, atoi, strtoull, size_t, NULL

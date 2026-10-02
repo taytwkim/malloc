@@ -1,7 +1,7 @@
 #ifndef TAYMALLOC_TCACHE_H
 #define TAYMALLOC_TCACHE_H
 
-#include "chunk.h"  // free_chunk_prefix_t
+#include "chunk.h"
 
 #define TCACHE_MAX_BINS 64
 #define TCACHE_MAX_COUNT 32

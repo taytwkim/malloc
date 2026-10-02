@@ -8,7 +8,7 @@ typedef struct {
     int disable_arenas;
 } taymalloc_config_t;
 
-extern taymalloc_config_t g_cfg;
+extern taymalloc_config_t g_config;
 
 void config_init(void);
 

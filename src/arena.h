@@ -4,7 +4,7 @@
 #include <pthread.h>  // pthread_mutex_t
 #include <stddef.h>   // size_t
 
-#include "chunk.h"  // heap_t, free_chunk_prefix_t
+#include "chunk.h"
 
 #define MAX_NUM_ARENAS 64
 

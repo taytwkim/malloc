@@ -1,12 +1,12 @@
-#include "heap.h"  // heap_t and heap function declarations
+#include "heap.h"
 
-#include <stddef.h>  // size_t, NULL
-#include <stdint.h>  // uint8_t, uintptr_t
+#include <stddef.h>     // size_t, NULL
+#include <stdint.h>     // uint8_t, uintptr_t
 
-#include "arena.h"     // arena_t layout, arena_mmap_new_heap, mapping size
-#include "chunk.h"     // chunk metadata and accessors
-#include "freelist.h"  // free_list_remove, free_list_push_front
-#include "util.h"      // align_16
+#include "arena.h"
+#include "chunk.h"
+#include "freelist.h"
+#include "util.h"
 
 void heap_set_next_chunk_P(heap_t *h, void *hdr, int P) {
     void *nxt = get_next_chunk_hdr(hdr);

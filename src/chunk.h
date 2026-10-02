@@ -1,8 +1,8 @@
 #ifndef TAYMALLOC_CHUNK_H
 #define TAYMALLOC_CHUNK_H
 
-#include <stddef.h>  // size_t
-#include <stdint.h>  // uint8_t
+#include <stddef.h>     // size_t
+#include <stdint.h>     // uint8_t
 
 /* 
  * CHUNK LAYOUT (in a 64 bit machine)
