@@ -5,17 +5,17 @@
 #include <stddef.h>     // size_t, NULL
 #include <stdint.h>     // uint8_t
 #include <sys/mman.h>   // mmap, munmap, mapping flags
-#include <unistd.h>     // sysconf, _SC_NPROCESSORS_ONLN
+#include <unistd.h>     // sysconf, _SC_PAGESIZE
 
 #include "chunk.h"
 #include "env.h"
 #include "heap.h"
 #include "util.h"
 
-static pthread_once_t g_once = PTHREAD_ONCE_INIT;
 static arena_t g_arenas[MAX_NUM_ARENAS];
 static int g_num_arenas = 0;
 static int g_next_arena = 0;
+static pthread_once_t g_once = PTHREAD_ONCE_INIT;
 static pthread_mutex_t g_arena_assign_lock = PTHREAD_MUTEX_INITIALIZER;
 static _Thread_local arena_t *t_arena = NULL;
 
@@ -112,29 +112,22 @@ int arena_munmap_heap(arena_t *a, heap_t *h) {
     return -1;
 }
 
-static void arena_unmap_all_heaps(arena_t *a) {
-    heap_t *h = a->heaps;
-
-    while (h) {
-        heap_t *next = h->next;
-        size_t mapping_size = (size_t)((uint8_t *)h->end - (uint8_t *)h);
-        (void)munmap((void *)h, mapping_size);
-        h = next;
-    }
-    
-    a->heaps = NULL;
-    a->active_heap = NULL;
-}
-
 static int arena_init(arena_t *a, int id) {
     a->id = id;
     a->heaps = NULL;
     a->active_heap = NULL;
     a->free_list = NULL;
-    pthread_mutex_init(&a->lock, NULL);
+
+    if (pthread_mutex_init(&a->lock, NULL) != 0) {
+        return -1;
+    }
 
     int add_heap_succeeded = arena_mmap_new_heap(a);
-    if (add_heap_succeeded < 0) return -1;
+
+    if (add_heap_succeeded < 0) {
+        pthread_mutex_destroy(&a->lock);
+        return -1;
+    }
 
     return 0;
 }
@@ -142,17 +135,19 @@ static int arena_init(arena_t *a, int id) {
 arena_t *arena_from_thread(void) {
     if (t_arena) return t_arena;
 
-    if (g_config.disable_arenas) {
-        t_arena = &g_arenas[0];
-        return t_arena;
-    }
-
     pthread_mutex_lock(&g_arena_assign_lock);
 
-    int idx = g_next_arena % g_num_arenas;
-    g_next_arena++;
+    int limit = g_config.disable_arenas ? 1 : MAX_NUM_ARENAS;
 
-    t_arena = &g_arenas[idx];
+    // Initialize a new arena if we are not at the limit.
+    if (g_num_arenas < limit && arena_init(&g_arenas[g_num_arenas], g_num_arenas) == 0) {
+        t_arena = &g_arenas[g_num_arenas++];
+    }
+    else if (g_num_arenas > 0) {
+        // Share existing arenas at the limit, or if initialization failed.
+        t_arena = &g_arenas[g_next_arena];
+        g_next_arena = (g_next_arena + 1) % g_num_arenas;
+    }
 
     pthread_mutex_unlock(&g_arena_assign_lock);
 
@@ -162,29 +157,10 @@ arena_t *arena_from_thread(void) {
 static void global_init(void) {
     // Read environment variables once during startup
     config_init();
-
-    if (g_config.disable_arenas) {
-        g_num_arenas = 1;
-    }
-    else {
-        long cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
-        g_num_arenas = cpu_count < 1 ? 1
-                     : cpu_count > MAX_NUM_ARENAS ? MAX_NUM_ARENAS : (int)cpu_count;
-    }
-
-    for (int i = 0; i < g_num_arenas; ++i) {
-        if (arena_init(&g_arenas[i], i) < 0) {
-            // clean up if arena_init fails
-            for (int j = 0; j < i; ++j) {
-                arena_unmap_all_heaps(&g_arenas[j]);
-            }
-            return;
-        }
-    }
 }
 
 
-// Initialize the arenas exactly once across threads
+// Initialize allocator configuration exactly once across threads
 // Later calls don't repeat init, if another thread is initializing,
 // other callers wait until it finishes.
 void global_init_once(void) {
