@@ -19,18 +19,46 @@ static int g_next_arena = 0;
 static pthread_mutex_t g_arena_assign_lock = PTHREAD_MUTEX_INITIALIZER;
 static _Thread_local arena_t *t_arena = NULL;
 
-int arena_mmap_new_heap(arena_t *a, size_t mapping_size) {
-    mapping_size = align_pagesize(mapping_size);
+int arena_mmap_new_heap(arena_t *a) {
+    const size_t mapping_size = HEAP_MAPPING_SIZE;
+    long page_size = sysconf(_SC_PAGESIZE);
 
-    void *mem = mmap(NULL, mapping_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (mem == MAP_FAILED) return -1;
+    if (page_size <= 0 || mapping_size % (size_t)page_size != 0 ||
+        mapping_size <= heap_first_chunk_hdr_offset()) return -1;
+
+    size_t reserved_size = 2 * mapping_size;
+
+    void *raw = mmap(NULL, reserved_size, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    if (raw == MAP_FAILED) return -1;
+
+    uintptr_t aligned = ((uintptr_t)raw + mapping_size - 1) & ~((uintptr_t)mapping_size - 1);
+    void *mem = (void *)aligned;
+
+    size_t prefix = aligned - (uintptr_t)raw;
+    size_t suffix = reserved_size - prefix - mapping_size;
+    
+    if (prefix != 0) {
+        int result = munmap(raw, prefix);
+        if (result != 0) {
+            (void)munmap(raw, reserved_size);
+            return -1;
+        }
+    }
+    
+    if (suffix != 0) {
+        int result = munmap((uint8_t *)mem + mapping_size, suffix);
+        if (result != 0) {
+            (void)munmap(mem, reserved_size - prefix);
+            return -1;
+        }
+    }
 
     heap_t *h = (heap_t *)mem;
     h->arena = a;
     h->next = NULL;
-    
-    size_t first_chunk_offset = align_16(sizeof(*h) + sizeof(inuse_chunk_prefix_t)) - sizeof(inuse_chunk_prefix_t);
-    h->base = (uint8_t *)mem + first_chunk_offset;
+    h->base = (uint8_t *)mem + heap_first_chunk_hdr_offset();
     h->bump = h->base;
     h->end = (uint8_t *)mem + mapping_size;
 
@@ -54,17 +82,20 @@ int arena_munmap_heap(arena_t *a, heap_t *h) {
 
     while (curr) {
         if (curr == h) {
-            // remove from linked list
+            // Remove from linked list
             if (prev == NULL) {
-                // if h is the head of the list
+                // If h is the head of the list
                 a->heaps = curr->next;
             }
             else {
                 prev->next = curr->next;
             }
             
-            if (h == a->active_heap) {
-                // for now, we always set the last heap to be the active heap
+            if (a->heaps == NULL) {
+                a->active_heap = NULL;
+            }
+            else if (h == a->active_heap) {
+                // For now, we always set the last heap to be the active heap
                 a->active_heap = prev;
             }
 
@@ -102,14 +133,12 @@ static int arena_init(arena_t *a, int id) {
     a->free_list = NULL;
     pthread_mutex_init(&a->lock, NULL);
 
-    int add_heap_succeeded = arena_mmap_new_heap(a, ARENA_DEFAULT_MAPPING_SIZE);
-    
+    int add_heap_succeeded = arena_mmap_new_heap(a);
     if (add_heap_succeeded < 0) return -1;
 
     return 0;
 }
 
-// for malloc, we want to allocate from the thread-specific arena
 arena_t *arena_from_thread(void) {
     if (t_arena) return t_arena;
 
@@ -131,7 +160,8 @@ arena_t *arena_from_thread(void) {
 }
 
 static void global_init(void) {
-    config_init();  // read environment variables once during startup
+    // Read environment variables once during startup
+    config_init();
 
     if (g_config.disable_arenas) {
         g_num_arenas = 1;
@@ -139,8 +169,7 @@ static void global_init(void) {
     else {
         long cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
         g_num_arenas = cpu_count < 1 ? 1
-                     : cpu_count > MAX_NUM_ARENAS ? MAX_NUM_ARENAS
-                     : (int)cpu_count;
+                     : cpu_count > MAX_NUM_ARENAS ? MAX_NUM_ARENAS : (int)cpu_count;
     }
 
     for (int i = 0; i < g_num_arenas; ++i) {
@@ -154,6 +183,10 @@ static void global_init(void) {
     }
 }
 
-void ensure_global_init(void) {
+
+// Initialize the arenas exactly once across threads
+// Later calls don't repeat init, if another thread is initializing,
+// other callers wait until it finishes.
+void global_init_once(void) {
     pthread_once(&g_once, global_init);
 }

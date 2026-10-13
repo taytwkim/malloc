@@ -6,7 +6,7 @@
 
 #include "util.h"
 
-taymalloc_config_t g_config = {0};  // zero-initialize config
+taymalloc_config_t g_config = {0};  // Zero-initialize
 
 static int env_is_enabled(const char* name) {
     const char* value = getenv(name);

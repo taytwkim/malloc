@@ -36,7 +36,7 @@ void* free_list_try(arena_t *a, size_t chunk_size) {
     for (free_chunk_prefix_t *p = a->free_list; p; p = p->prev) {
         if (!chunk_is_free(p)) continue;
         if (chunk_get_size(p) >= chunk_size) {
-            heap_t *h = chunk_get_heap(p);
+            heap_t *h = get_chunk_heap(p);
             return heap_split_free_chunk(h, p, chunk_size);
         }
     }

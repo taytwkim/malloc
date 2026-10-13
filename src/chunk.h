@@ -8,11 +8,9 @@
  * CHUNK LAYOUT (in a 64 bit machine)
  *
  * in-use:    [ header (size | flags) ]       8 bytes
- *            [ owning heap ptr       ]       8 bytes
  *            [ payload ...           ]
  * 
  * free:      [ header (size | flags) ]       8 bytes
- *            [ owning heap ptr       ]       8 bytes
  *            [ fd                    ]       8 bytes, forward pointer to the next free chunk
  *            [ bk                    ]       8 bytes, backward pointer to the prev free chunk
  * 
@@ -47,17 +45,15 @@ typedef struct heap heap_t;
 
 typedef struct inuse_chunk_prefix {
     size_t hdr;
-    heap_t *heap;
 } inuse_chunk_prefix_t;
 
 typedef struct free_chunk_prefix {
     size_t hdr;
-    heap_t *heap;
     struct free_chunk_prefix *prev;
     struct free_chunk_prefix *next;
 } free_chunk_prefix_t;
 
-// header & CHUNK_HDR_SIZE_MASK clears the flag bits and gives us the chunk size.
+// Header & CHUNK_HDR_SIZE_MASK clears the flag bits and gives us the chunk size.
 // Notice that we flip the bits (~).
 #define CHUNK_HDR_SIZE_MASK (~(size_t)0xF)
 
@@ -66,6 +62,10 @@ typedef struct free_chunk_prefix {
 #define CHUNK_HDR_P_MASK ((size_t)1)
 
 #define CHUNK_HDR_M_MASK ((size_t)2)
+
+// MMAPED chunks don't have heap_t and has different alignment.
+// Padding ensures that the chunk payload is 16-aligned.
+#define MMAPED_CHUNK_PADDING (16 - sizeof(inuse_chunk_prefix_t))
 
 static inline size_t chunk_get_size(void *hdr) { 
     return (*(size_t*)hdr) & CHUNK_HDR_SIZE_MASK; 
@@ -120,12 +120,10 @@ static inline int chunk_is_free(void *hdr) {
     return prev_chunk_is_free(nxt);
 }
 
-static inline heap_t* chunk_get_heap(void *hdr) { 
-    return ((inuse_chunk_prefix_t*)hdr)->heap;
-}
+// chunk_size includes the header. Returns a chunk header, or NULL on failure.
+void *mmap_large_chunk(size_t chunk_size);
 
-static inline void chunk_set_heap(void *hdr, heap_t *h) { 
-    ((inuse_chunk_prefix_t*)hdr)->heap = h;
-}
+// Unmap a standalone chunk using its header, not its payload address.
+void munmap_large_chunk(void *hdr);
 
 #endif

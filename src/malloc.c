@@ -1,10 +1,8 @@
-#define _DEFAULT_SOURCE
 #include "malloc.h"
 
 #include <pthread.h>    // pthread_mutex_lock, pthread_mutex_unlock
 #include <stddef.h>     // size_t, NULL
 #include <stdint.h>     // uint8_t
-#include <sys/mman.h>   // mmap, munmap, mapping flags
 
 #include "arena.h"
 #include "chunk.h"
@@ -15,7 +13,7 @@
 #include "util.h"
 
 void *malloc(size_t requested_size) {
-    ensure_global_init();
+    global_init_once();
     
     safe_log_msg("[malloc]: entered malloc\n");
 
@@ -44,24 +42,13 @@ void *malloc(size_t requested_size) {
         chunk_size = min_chunk_size;
     }
     
-    size_t max_heap_capacity = ARENA_DEFAULT_MAPPING_SIZE - align_16(sizeof(heap_t));
+    size_t max_heap_capacity = HEAP_MAPPING_SIZE - heap_first_chunk_hdr_offset();
 
     if (chunk_size > max_heap_capacity) {
         safe_log_msg("[malloc]: large request alloc path\n");
 
-        size_t mapping_size = align_pagesize(chunk_size);
-
-        if (mapping_size < chunk_size) {
-            return NULL;
-        }
-
-        void *mem = mmap(NULL, mapping_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        if (mem == MAP_FAILED) return NULL;
-
-        inuse_chunk_prefix_t *hdr = mem;
-        chunk_write_size_to_hdr(hdr, mapping_size);
-        chunk_set_M(hdr, 1);
-        chunk_set_heap(hdr, NULL);
+        void *hdr = mmap_large_chunk(chunk_size);
+        if (hdr == NULL) return NULL;
 
         return chunk_hdr_to_payload(hdr);
     }
@@ -85,7 +72,7 @@ void *malloc(size_t requested_size) {
         }
     }
 
-    // 2) If tcache miss, fall back to arena freelist / bump
+    // 2) If tcache miss, fall back to arena freelist or active heap bump
     if (!hdr) {
         safe_log_msg("[malloc]: searching freelist\n");
 
@@ -95,7 +82,7 @@ void *malloc(size_t requested_size) {
 
         if (!hdr) {
             safe_log_msg("[malloc]: freelist miss, carve from top\n");
-            hdr = heap_carve_from_bump(a->active_heap, chunk_size);     // if free list miss, carve from top
+            hdr = heap_carve_from_bump(a->active_heap, chunk_size);     // If free list miss, carve from top
 
             if (!hdr) {
                 safe_log_msg("[malloc]: malloc failed, return NULL\n");
@@ -121,17 +108,17 @@ void free(void *ptr) {
         return;
     }
 
-    ensure_global_init();
+    global_init_once();
 
     uint8_t *hdr = (uint8_t*)chunk_payload_to_hdr(ptr);
     size_t chunk_size = chunk_get_size(hdr);
 
     if (chunk_get_M(hdr)) {
-        munmap(hdr, chunk_get_size(hdr));
+        munmap_large_chunk(hdr);
         return;
     }
 
-    heap_t *h = chunk_get_heap(hdr);   // Route to the owning heap/arena (cross-thread correct)
+    heap_t *h = get_chunk_heap(hdr);   // Route to the owning heap/arena
     
     if (!h) {
         safe_log_msg("[free]: failed to find the right heap\n");
@@ -153,7 +140,7 @@ void free(void *ptr) {
 
     // 1) Try to put small chunks into per-thread tcache
     // NOTE: this caches into the current thread's tcache even for cross-thread frees.
-    // That’s okay for correctness as long as ownership metadata remains in the chunk.
+    // That’s okay for correctness because the chunk address still identifies its owning heap.
 
     if (!g_config.disable_tcache && bin >= 0) {
         safe_log_msg("[free]: free to tcache\n");
@@ -189,12 +176,12 @@ void free(void *ptr) {
 
     heap_set_next_chunk_P(h, merged, 0);
 
-    // if the freed chunk touches the top of THIS heap, shrink bump
+    // If the freed chunk touches the top of THIS heap, shrink bump
     if (merged_end == h->bump) {
         safe_log_msg("[free]: shrink bump\n");
         h->bump = (uint8_t*)merged;
 
-        // unmap heap if it is completely free
+        // Unmap heap if it is completely free
         if (h->bump == h->base && !(a->heaps == h && h->next == NULL)) {
             safe_log_msg("[free]: heap unused, unmap heap\n");
             arena_munmap_heap(a, h);
