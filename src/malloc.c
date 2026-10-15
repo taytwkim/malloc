@@ -53,23 +53,10 @@ void *malloc(size_t requested_size) {
         return chunk_hdr_to_payload(hdr);
     }
 
-    int bin = (int)(chunk_size / 16) - 2;   // Chunk-size bins: 32->0, 48->1, 64->2, ...; sizes include the prefix.
-    if (bin < 0 || bin >= TCACHE_MAX_BINS) bin = -1;
-
-    void *hdr = NULL;
-
     // 1) Try tcache first
-    if (!g_config.disable_tcache && bin >= 0) {
-        safe_log_msg("[malloc]: searching tcache\n");
-
-        tcache_bin_t *b = &g_tcache[bin];
-
-        if (b->head != NULL) {
-            free_chunk_prefix_t *fc = b->head;
-            b->head = fc->prev;
-            b->count--;
-            hdr = (void*)fc;
-        }
+    void *hdr = NULL;
+    if (!g_config.disable_tcache) {
+        hdr = tcache_try_pop(chunk_size);
     }
 
     // 2) If tcache miss, fall back to arena freelist or active heap bump
@@ -132,32 +119,9 @@ void free(void *ptr) {
         return;
     }
     
-    int bin = (int)(chunk_size / 16) - 2;
-
-    if (bin < 0 || bin >= TCACHE_MAX_BINS) {
-        bin = -1;
-    }
-
     // 1) Try to put small chunks into per-thread tcache
-    // NOTE: this caches into the current thread's tcache even for cross-thread frees.
-    // That’s okay for correctness because the chunk address still identifies its owning heap.
-
-    if (!g_config.disable_tcache && bin >= 0) {
-        safe_log_msg("[free]: free to tcache\n");
-        
-        tcache_bin_t *b = &g_tcache[bin];
-
-        if (b->count < TCACHE_MAX_COUNT) {
-            free_chunk_prefix_t *fc = (free_chunk_prefix_t*)hdr;
-
-            // IMPORTANT: do NOT mark as free, do NOT set footer, do NOT coalesce.
-            // Chunk stays "in-use" from the global allocator's point of view.
-            
-            fc->prev = b->head;
-            b->head = fc;
-            b->count++;
-            return;
-        }
+    if (!g_config.disable_tcache && tcache_try_push(hdr)) {
+        return;
     }
 
     // 2) Fall back to global free path: mark free, coalesce in the owning heap, push to arena freelist.

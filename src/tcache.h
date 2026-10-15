@@ -1,16 +1,12 @@
 #ifndef TAYMALLOC_TCACHE_H
 #define TAYMALLOC_TCACHE_H
 
-#include "chunk.h"
+#include <stddef.h>     // size_t
 
 #define TCACHE_MAX_BINS 64
 #define TCACHE_MAX_COUNT 32
 
-typedef struct tcache_bin {
-    free_chunk_prefix_t *head;   // head of the linked list
-    int count;
-} tcache_bin_t;
-
-static _Thread_local tcache_bin_t g_tcache[TCACHE_MAX_BINS];  // per-thread tcache
+void *tcache_try_pop(size_t chunk_size);
+int tcache_try_push(void *hdr);
 
 #endif
