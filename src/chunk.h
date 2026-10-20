@@ -4,6 +4,8 @@
 #include <stddef.h>     // size_t
 #include <stdint.h>     // uint8_t
 
+#include "util.h"
+
 /* 
  * CHUNK LAYOUT (in a 64 bit machine)
  *
@@ -52,6 +54,8 @@ typedef struct free_chunk_prefix {
     struct free_chunk_prefix *prev;
     struct free_chunk_prefix *next;
 } free_chunk_prefix_t;
+
+#define MIN_CHUNK_SIZE align_16(sizeof(free_chunk_prefix_t) + sizeof(size_t))
 
 // Header & CHUNK_HDR_SIZE_MASK clears the flag bits and gives us the chunk size.
 // Notice that we flip the bits (~).

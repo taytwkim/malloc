@@ -1,7 +1,7 @@
 #define _DEFAULT_SOURCE
 #include "arena.h"
 
-#include <pthread.h>    // mutexes and one-time initialization
+#include <pthread.h>    // mutex and one-time initialization
 #include <stddef.h>     // size_t, NULL
 #include <stdint.h>     // uint8_t
 #include <sys/mman.h>   // mmap, munmap, mapping flags
@@ -20,18 +20,23 @@ static pthread_mutex_t g_arena_assign_lock = PTHREAD_MUTEX_INITIALIZER;
 static _Thread_local arena_t *t_arena = NULL;
 
 int arena_mmap_new_heap(arena_t *a) {
-    const size_t mapping_size = HEAP_MAPPING_SIZE;
+    const size_t mapping_size = HEAP_MMAP_SIZE;
     long page_size = sysconf(_SC_PAGESIZE);
 
     if (page_size <= 0 || mapping_size % (size_t)page_size != 0 ||
-        mapping_size <= heap_first_chunk_hdr_offset()) return -1;
+        mapping_size <= heap_first_chunk_hdr_offset())
+    {
+        return -1;
+    }
 
     size_t reserved_size = 2 * mapping_size;
 
     void *raw = mmap(NULL, reserved_size, PROT_READ | PROT_WRITE,
                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
-    if (raw == MAP_FAILED) return -1;
+    if (raw == MAP_FAILED) {
+        return -1;
+    }
 
     uintptr_t aligned = ((uintptr_t)raw + mapping_size - 1) & ~((uintptr_t)mapping_size - 1);
     void *mem = (void *)aligned;
@@ -41,6 +46,7 @@ int arena_mmap_new_heap(arena_t *a) {
     
     if (prefix != 0) {
         int result = munmap(raw, prefix);
+
         if (result != 0) {
             (void)munmap(raw, reserved_size);
             return -1;
@@ -49,6 +55,7 @@ int arena_mmap_new_heap(arena_t *a) {
     
     if (suffix != 0) {
         int result = munmap((uint8_t *)mem + mapping_size, suffix);
+        
         if (result != 0) {
             (void)munmap(mem, reserved_size - prefix);
             return -1;
@@ -116,7 +123,10 @@ static int arena_init(arena_t *a, int id) {
     a->id = id;
     a->heaps = NULL;
     a->active_heap = NULL;
-    a->free_list = NULL;
+
+    for (int i = 0; i < DEFAULT_FREE_LIST_MAX_BINS; ++i) {
+        a->free_list[i] = NULL;
+    }
 
     if (pthread_mutex_init(&a->lock, NULL) != 0) {
         return -1;
@@ -137,7 +147,7 @@ arena_t *arena_from_thread(void) {
 
     pthread_mutex_lock(&g_arena_assign_lock);
 
-    int limit = g_config.disable_arenas ? 1 : MAX_NUM_ARENAS;
+    int limit = g_env.disable_arenas ? 1 : MAX_NUM_ARENAS;
 
     // Initialize a new arena if we are not at the limit.
     if (g_num_arenas < limit && arena_init(&g_arenas[g_num_arenas], g_num_arenas) == 0) {

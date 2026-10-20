@@ -38,13 +38,13 @@ static inline void ignore_write_result(ssize_t result) {
 }
 
 static inline void safe_log_msg(const char *msg) {
-    if (g_config.verbose && msg) {
+    if (g_env.verbose && msg) {
         ignore_write_result(write(1, msg, safe_strlen(msg)));
     }
 }
 
 static inline void safe_log_ptr(const char *msg, void *ptr) {
-    if (!g_config.verbose) return;
+    if (!g_env.verbose) return;
 
     // Print the message first
     safe_log_msg(msg);

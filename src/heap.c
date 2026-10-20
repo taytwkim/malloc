@@ -101,15 +101,14 @@ void* heap_coalesce_free_chunk(heap_t *h, void *hdr) {
 // If the free chunk is large enough, split the chunk
 void* heap_split_free_chunk(heap_t *h, free_chunk_prefix_t *fc, size_t chunk_size) {
     size_t existing_chunk_size = chunk_get_size(fc);
-    const size_t min_chunk_size = align_16(sizeof(free_chunk_prefix_t) + sizeof(size_t));
 
-    if (existing_chunk_size >= chunk_size + min_chunk_size) {
+    if (existing_chunk_size >= chunk_size + MIN_CHUNK_SIZE) {
         // Split chunk
         free_list_remove(h->arena, fc);
 
         uint8_t *base = (uint8_t*)fc;
 
-        // Allocated chunk header
+        // Header for chunk to allocate
         chunk_write_size_to_hdr(base, chunk_size);
         heap_set_next_chunk_P(h, base, 1);
 

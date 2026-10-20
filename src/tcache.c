@@ -10,9 +10,9 @@ typedef struct tcache_bin {
 
 static _Thread_local tcache_bin_t g_tcache[TCACHE_MAX_BINS];
 
-static int tcache_bin_index(size_t chunk_size) {
+static int get_tcache_bin_index(size_t chunk_size) {
     size_t units = chunk_size / 16;
-    size_t min_units = align_16(sizeof(free_chunk_prefix_t) + sizeof(size_t)) / 16;
+    size_t min_units = MIN_CHUNK_SIZE / 16;
 
     if (units < min_units || units - min_units >= TCACHE_MAX_BINS) {
         return -1;
@@ -22,7 +22,7 @@ static int tcache_bin_index(size_t chunk_size) {
 }
 
 void *tcache_try_pop(size_t chunk_size) {
-    int bin = tcache_bin_index(chunk_size);
+    int bin = get_tcache_bin_index(chunk_size);
 
     if (bin < 0) {
         return NULL;   
@@ -37,14 +37,14 @@ void *tcache_try_pop(size_t chunk_size) {
     }
 
     free_chunk_prefix_t *fc = b->head;
-    b->head = fc->prev;
+    b->head = fc->next;
     b->count--;
 
     return fc;
 }
 
 int tcache_try_push(void *hdr) {
-    int bin = tcache_bin_index(chunk_get_size(hdr));
+    int bin = get_tcache_bin_index(chunk_get_size(hdr));
 
     if (bin < 0) {
         return 0;   
@@ -61,7 +61,7 @@ int tcache_try_push(void *hdr) {
     // Keep the chunk in-use from the arena's perspective so neighbors cannot
     // coalesce with it. Its address still identifies the owning heap/arena.
     free_chunk_prefix_t *fc = hdr;
-    fc->prev = b->head;
+    fc->next = b->head;
     b->head = fc;
     b->count++;
 

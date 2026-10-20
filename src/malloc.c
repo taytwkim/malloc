@@ -36,13 +36,11 @@ void *malloc(size_t requested_size) {
         return NULL;
     }
 
-    size_t min_chunk_size = align_16(sizeof(free_chunk_prefix_t) + sizeof(size_t));
-
-    if (chunk_size < min_chunk_size) {
-        chunk_size = min_chunk_size;
+    if (chunk_size < MIN_CHUNK_SIZE) {
+        chunk_size = MIN_CHUNK_SIZE;
     }
     
-    size_t max_heap_capacity = HEAP_MAPPING_SIZE - heap_first_chunk_hdr_offset();
+    size_t max_heap_capacity = HEAP_MMAP_SIZE - heap_first_chunk_hdr_offset();
 
     if (chunk_size > max_heap_capacity) {
         safe_log_msg("[malloc]: large request alloc path\n");
@@ -55,7 +53,7 @@ void *malloc(size_t requested_size) {
 
     // 1) Try tcache first
     void *hdr = NULL;
-    if (!g_config.disable_tcache) {
+    if (!g_env.disable_tcache) {
         hdr = tcache_try_pop(chunk_size);
     }
 
@@ -120,7 +118,7 @@ void free(void *ptr) {
     }
     
     // 1) Try to put small chunks into per-thread tcache
-    if (!g_config.disable_tcache && tcache_try_push(hdr)) {
+    if (!g_env.disable_tcache && tcache_try_push(hdr)) {
         return;
     }
 
