@@ -24,7 +24,7 @@ int arena_mmap_new_heap(arena_t *a) {
     long page_size = sysconf(_SC_PAGESIZE);
 
     if (page_size <= 0 || mapping_size % (size_t)page_size != 0 ||
-        mapping_size <= heap_first_chunk_hdr_offset())
+        mapping_size <= heap_get_padding_size())
     {
         return -1;
     }
@@ -65,7 +65,7 @@ int arena_mmap_new_heap(arena_t *a) {
     heap_t *h = (heap_t *)mem;
     h->arena = a;
     h->next = NULL;
-    h->base = (uint8_t *)mem + heap_first_chunk_hdr_offset();
+    h->base = (uint8_t *)mem + heap_get_padding_size();
     h->bump = h->base;
     h->end = (uint8_t *)mem + mapping_size;
 

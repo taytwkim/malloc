@@ -14,11 +14,21 @@ typedef struct heap {
     arena_t *arena;
     struct heap *next;
     uint8_t *base;         // First chunk header, after heap_t and alignment padding
-    uint8_t *bump;         // Frontier of carved chunks; initially base
+    uint8_t *bump;         // Start of unexplored region; initially base
     uint8_t *end;          // One past the aligned heap mapping
 } heap_t;
 
-static inline size_t heap_first_chunk_hdr_offset(void) {
+/* HEAP LAYOUT
+ *
+ *      [ PADDING               ]       heap_t + any bytes needed for alignment
+ *      [ header (size | flags) ]       First chunk header
+ *      [ payload ...           ]       First chunk payload <- 16B aligned
+ *
+ * heap_get_padding_size() returns the total bytes before the first chunk header,
+ * including heap_t. This places the first payload at a 16-byte-aligned address.
+ */
+
+static inline size_t heap_get_padding_size(void) {
     return align_16(sizeof(heap_t) + sizeof(inuse_chunk_prefix_t)) - sizeof(inuse_chunk_prefix_t);
 }
 
@@ -34,7 +44,7 @@ void* heap_carve_from_bump(heap_t *h, size_t chunk_size);
 // Merge chunk with adjacent free chunks (adjacent in memory, not in the linked list)
 void* heap_coalesce_free_chunk(heap_t *h, void *hdr);
 
-// If the free chunk is large enough (remainder is greater than MIN_CHUNK_SIZE), split the chunk.
+// If the free chunk is large enough (i.e., remainder is greater than MIN_CHUNK_SIZE), split the chunk.
 // Return header of chunk to allocate.
 void* heap_split_free_chunk(heap_t *h, free_chunk_prefix_t *fc, size_t chunk_size);
 
