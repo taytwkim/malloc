@@ -3,6 +3,7 @@
 #include <pthread.h>    // pthread_mutex_lock, pthread_mutex_unlock
 #include <stddef.h>     // size_t, NULL
 #include <stdint.h>     // uint8_t
+#include <string.h>     // memset
 #include <sys/mman.h>   // munmap
 
 #include "arena.h"
@@ -167,6 +168,21 @@ void free(void *ptr) {
     pthread_mutex_unlock(&a->lock);
 }
 
+void *calloc(size_t count, size_t size) {
+     if (size != 0 && count > SIZE_MAX / size) {
+        return NULL;
+    }
+
+    size_t total = count * size;
+    void *ptr = malloc(total);
+
+    if (ptr != NULL) {
+        memset(ptr, 0, total);
+    }
+
+    return ptr;      
+}
+
 void *realloc(void *ptr, size_t requested_size) {
     if (requested_size == 0) {
         return NULL;
@@ -192,19 +208,19 @@ void *realloc(void *ptr, size_t requested_size) {
     if (new_chunk_size == curr_chunk_size) {
         return chunk_hdr_to_payload(hdr);
     }
-
+    
     // If the chunk has been mmaped directly.
     if (chunk_get_M(hdr)) {
         size_t curr_mapping_size = get_mmapped_chunk_mmap_size(curr_chunk_size);
         size_t new_mapping_size = get_mmapped_chunk_mmap_size(new_chunk_size);
-
+        
         if (new_mapping_size == 0) {
+            // Rounding up to mmap/page size overflowed.
             return NULL;
         }
 
-        // The current mapping can satisfy the new size
+        // Current mapping can satisfy the new size.
         if (new_mapping_size <= curr_mapping_size) {
-
             // Same number of pages, only update the chunk size.
             if (new_mapping_size == curr_mapping_size) {
                 chunk_write_size_to_hdr(hdr, new_chunk_size);
@@ -240,21 +256,47 @@ void *realloc(void *ptr, size_t requested_size) {
         }
     }
 
-    // if (new_chunk_size <= curr_chunk_size) {
-    //     // Try splitting
-    //     if (curr_chunk_size - new_chunk_size >= MIN_CHUNK_SIZE) {
+    heap_t *h = get_chunk_heap(hdr);
+    arena_t *a = h->arena;
+    pthread_mutex_lock(&a->lock);
 
-    //     }
+    if (curr_chunk_size > new_chunk_size) {
+        // Try splitting
+        heap_split_inuse_chunk(h, (inuse_chunk_prefix_t*)hdr, new_chunk_size);
+        pthread_mutex_unlock(&a->lock);
+        return ptr;
+    }
 
-    //     // Do nothing if the chunk is not large enought to be split
-    //     return ptr;
-    // }
+    // If the requested size is larger than the current chunk size
+    else {
+        // Check if the next chunk is free and is large enough to be merged
+        if (!heap_is_last_chunk(h, hdr)) {
+            void *nxt = get_next_chunk_hdr(hdr);
 
-    // // If the requested size is larger than the current chunk size
-    // else {
-    //     // Check if the next chunk is free and is large enough to be merged
-    //     // If not, allocate a new chunk, copy, and free the old chunk
-    // }
+            if (!heap_is_last_chunk(h, nxt) && chunk_is_free(nxt)) {
+                size_t nxt_chunk_size = chunk_get_size(nxt);
 
-    return hdr;
+                if (new_chunk_size <= curr_chunk_size + nxt_chunk_size) {
+                    free_list_remove(a, (free_chunk_prefix_t *)nxt);
+                    chunk_write_size_to_hdr(hdr, curr_chunk_size + nxt_chunk_size);
+                    heap_set_next_chunk_P(h, hdr, 1);
+                    pthread_mutex_unlock(&a->lock);
+                    return ptr;
+                }
+            }
+        }
+
+        // If not, allocate a new chunk, copy, and free the old chunk
+        pthread_mutex_unlock(&a->lock);
+        void *new_ptr = malloc(requested_size);
+
+        if (new_ptr == NULL) {
+            return NULL;
+        }
+
+        void *new_hdr = chunk_payload_to_hdr(new_ptr);
+        chunk_copy_data(hdr, curr_chunk_size, new_hdr, new_chunk_size);
+        free(ptr);
+        return new_ptr;
+    }
 }

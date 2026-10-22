@@ -4,7 +4,7 @@ CC = cc
 # but -pthread is still often added at compile time because it may enable 
 # thread-related compiler behavior.
 
-CFLAGS = -std=c11 -Wall -Wextra -O2 -fPIC -pthread
+CFLAGS = -std=c11 -Wall -Wextra -O2 -fPIC -pthread -fno-builtin
 LDFLAGS = -shared -pthread
 
 SRCS = src/arena.c src/chunk.c src/env.c src/freelist.c src/heap.c src/malloc.c src/tcache.c

@@ -36,6 +36,10 @@ static inline heap_t *get_chunk_heap(void *hdr) {
     return (heap_t *)((uintptr_t)hdr & ~((uintptr_t)HEAP_MMAP_SIZE - 1));
 }
 
+int heap_is_first_chunk(heap_t *h, void *hdr);
+
+int heap_is_last_chunk(heap_t *h, void *hdr);
+
 void heap_set_next_chunk_P(heap_t *h, void *hdr, int P);
 
 // If the freelist does not have a suitable chunk, carve from bump
@@ -46,6 +50,8 @@ void* heap_coalesce_free_chunk(heap_t *h, void *hdr);
 
 // If the free chunk is large enough (i.e., remainder is greater than MIN_CHUNK_SIZE), split the chunk.
 // Return header of chunk to allocate.
-void* heap_split_free_chunk(heap_t *h, free_chunk_prefix_t *fc, size_t chunk_size);
+void* heap_split_free_chunk(heap_t *h, free_chunk_prefix_t *prefix, size_t new_chunk_size);
+
+void *heap_split_inuse_chunk(heap_t *h, inuse_chunk_prefix_t *prefix, size_t new_chunk_size);
 
 #endif

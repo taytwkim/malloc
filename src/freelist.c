@@ -6,7 +6,6 @@
 #include "chunk.h"
 #include "env.h"
 #include "heap.h"
-#include "util.h"
 
 int get_free_list_bin(size_t chunk_size) {
     size_t units = chunk_size / 16;

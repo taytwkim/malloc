@@ -1,6 +1,7 @@
 #define _DEFAULT_SOURCE
 #include "chunk.h"
 
+#include <string.h>
 #include <sys/mman.h>   // mmap, munmap, mapping flags
 
 #include "util.h"
@@ -38,4 +39,10 @@ void *mmap_large_chunk(size_t chunk_size) {
 void munmap_large_chunk(void *hdr) {
     size_t mapping_size = get_mmapped_chunk_mmap_size(chunk_get_size(hdr));
     (void)munmap((uint8_t *)hdr - MMAPED_CHUNK_PADDING, mapping_size);
+}
+
+void chunk_copy_data(void *hdr1, size_t size1, void* hdr2, size_t size2) {
+    size_t copy_size = size1 < size2 ? size1 : size2;
+    copy_size -= sizeof(inuse_chunk_prefix_t);
+    memcpy(chunk_hdr_to_payload(hdr2), chunk_hdr_to_payload(hdr1), copy_size);   
 }

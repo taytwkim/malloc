@@ -10,7 +10,6 @@
 #include "chunk.h"
 #include "env.h"
 #include "heap.h"
-#include "util.h"
 
 static arena_t g_arenas[MAX_NUM_ARENAS];
 static int g_num_arenas = 0;

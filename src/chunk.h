@@ -139,6 +139,7 @@ static inline int chunk_is_free(void *hdr) {
     return prev_chunk_is_free(nxt);
 }
 
+// Returns the page-rounded mapping size, or 0 on overflow.
 size_t get_mmapped_chunk_mmap_size(size_t chunk_size);
 
 void *mmap_large_chunk(size_t chunk_size);
@@ -146,7 +147,7 @@ void *mmap_large_chunk(size_t chunk_size);
 void munmap_large_chunk(void *hdr);
 
 // Copy data from chunk1 to chunk2.
-// Copied only when both chunks are in-use.
+// Both chunks should be in-use.
 // Only min(size1, size2) bytes will be copied.
 void chunk_copy_data(void *hdr1, size_t size1, void* hdr2, size_t size2);
 
