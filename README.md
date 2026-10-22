@@ -2,7 +2,7 @@
 
 Implement a memory allocator in C that can be dynamically interposed in Linux codebases.
 
-## Getting Started
+## Usage
 
 1. Build `libtaymalloc.so`.
 
@@ -14,17 +14,16 @@ make
 
 ```bash
 # Compile target code
-gcc tests/hello.c -o build/hello
-
-# Load taymalloc
-TAYMALLOC_HELLO=1 LD_PRELOAD=./build/libtaymalloc.so ./build/hello
+gcc hello.c -o hello
+LD_PRELOAD=./build/libtaymalloc.so ./hello
 ```
 
-For quick tests on non-Linux platforms, use `docker_run.sh` to spin up a Linux container and run tests.
+## Testing
+
+All tests under `tests/` link directly with the allocator's object files, and do not require `LD_PRELOAD`.
+Test builds require OpenMP support for the multithreaded tests.
 
 ```bash
-./scripts/docker_run.sh tests/hello.c
-
-# Pass in environment variables
-./scripts/docker_run.sh tests/hello.c TAYMALLOC_HELLO=1
+make build_test         # Build tests
+make run_test           # Build and run all tests
 ```
