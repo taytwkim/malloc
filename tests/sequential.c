@@ -1,7 +1,7 @@
 #include <assert.h>  // assert
 #include <stdint.h>  // uintptr_t
 #include <stdio.h>   // printf
-#include <stdlib.h>  // malloc, free, size_t, NULL
+#include <stdlib.h>  // malloc, free, rand, srand
 
 static int aligned16(void *p) {
     return ((uintptr_t)p & 15u) == 0; 
@@ -23,8 +23,8 @@ static void test_alignment(void) {
 }
 
 static void test_null_and_zero(void) {
-    free(NULL);            // free(NULL) should be a no-op
-    void* p = malloc(0);   // should be NULL
+    free(NULL);             // free(NULL) should be a no-op
+    void* p = malloc(0);
     assert(p == NULL);
 }
 
@@ -36,35 +36,44 @@ static void test_big_chunk_alloc(void) {
 }
 
 static void test_churn(void) {
-    // Using enum here makes N a compile-time constant (immutable)
-    // instead of a regular variable in memory.
-    enum { N = 1000000 };
-    void* arr[N] = {0};
+    const int N = 1000;
+    const int rounds = 10;
+    const int MAX_SIZE = 4096;
+    void* arr[N];
+    void* more[N];
 
-    // Allocate a mix of sizes
-    for (int i = 0; i < N; ++i) {
-        size_t sz = 1 + (i % 64);    // 1..64 bytes
-        arr[i] = malloc(sz);
-        assert(arr[i]);
-        assert(aligned16(arr[i]));
-    }
+    srand(42);
 
-    // Free every third block to fragment the freelist
-    for (int i = 0; i < N; i += 3) {
-        free(arr[i]);
-        arr[i] = NULL;
-    }
+    for (int r = 0; r < rounds; ++r) {
+        // Allocate random sizes between 1 and MAX_SIZE bytes.
+        for (int i = 0; i < N; ++i) {
+            size_t sz = 1 + rand() % MAX_SIZE;
+            arr[i] = malloc(sz);
+            assert(arr[i]);
+            assert(aligned16(arr[i]));
+        }
 
-    // Reuse: allocate & free a bunch of 64B payloads
-    for (int i = 0; i < N; ++i) {
-        void *p = malloc(64);
-        assert(p && aligned16(p));
-        free(p);
-    }
+        // Toss a coin for each block to decide whether to free it.
+        for (int i = 0; i < N; ++i) {
+            if (rand() % 2 == 0) {
+                free(arr[i]);
+                arr[i] = NULL;
+            }
+        }
 
-    // Free the rest
-    for (int i = 0; i < N; ++i) {
-        if (arr[i]) free(arr[i]);
+        // Keep a second batch alive alongside the surviving blocks.
+        for (int i = 0; i < N; ++i) {
+            size_t sz = 1 + rand() % MAX_SIZE;
+            more[i] = malloc(sz);
+            assert(more[i]);
+            assert(aligned16(more[i]));
+        }
+
+        // Free the survivors and the entire second batch.
+        for (int i = 0; i < N; ++i) {
+            free(arr[i]);
+            free(more[i]);
+        }
     }
 }
 
@@ -81,7 +90,7 @@ int main(void){
     printf("[*] test_churn...\n");
     test_churn();
 
-    printf("[test1] PASSED ✅\n");
+    printf("[sequential] ALL TESTS PASSED ✅\n");
     
     return 0;
 }

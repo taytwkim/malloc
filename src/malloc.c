@@ -280,6 +280,7 @@ void *realloc(void *ptr, size_t requested_size) {
                     free_list_remove(a, (free_chunk_prefix_t *)nxt);
                     chunk_write_size_to_hdr(hdr, curr_chunk_size + nxt_chunk_size);
                     heap_set_next_chunk_P(h, hdr, 1);
+                    heap_split_inuse_chunk(h, (inuse_chunk_prefix_t*)hdr, new_chunk_size);
                     pthread_mutex_unlock(&a->lock);
                     return ptr;
                 }
