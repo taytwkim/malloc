@@ -60,3 +60,4 @@ dkms.conf
 
 # executables
 build/
+hello
